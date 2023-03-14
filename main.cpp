@@ -1,5 +1,6 @@
 #include <iostream>
 #include <stdio.h>
+#include <vector>
 
 // CPU Matrix Operations
 // Implement operations as CUDA kernels to optimize
@@ -11,19 +12,58 @@ private:
 
 public:
     // Constructors
+    static Matrix zeros(int rows, int cols) {
+        double * data = (double*) malloc(rows * cols * sizeof(double));
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                data[i * cols + j] = 0.0;
+            }
+        }
+        Matrix a = Matrix(rows,cols,data);
+        return a;
+    } 
+
+    static Matrix ones(int rows, int cols) {
+        double * data = (double*) malloc(rows * cols * sizeof(double));
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                data[i * cols + j] = 1.0;
+            }
+        }
+        Matrix a = Matrix(rows,cols,data);
+        return a;
+    } 
+
+    static Matrix randN(int rows, int cols) {
+        double * data = (double*) malloc(rows * cols * sizeof(double));
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                data[i * cols + j] = std::rand();
+            }
+        }
+        Matrix a = Matrix(rows,cols,data);
+        return a;
+    }
+
     Matrix (int rows, int cols) : rows(rows), cols(cols) {
         data = (double*)malloc(rows * cols * sizeof(double));
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                data[i * cols + j] = 1.0 * (i * cols + j);
+                data[i * cols + j] = 0.0;
             }
-        }
-        for (int i = 0; i < rows * cols; i++) {
-            data[i] = 1.0 * (i);
         }
     }
 
     Matrix(int rows, int cols, double* data) : rows(rows), cols(cols), data(data) {}
+
+    Matrix (int rows, int cols, std::vector<std::vector<double>> v) : rows(rows), cols(cols) {
+        data = (double*) malloc(rows * cols * sizeof(double));
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                data[i * cols + j] = v[i][j];
+            }
+        }
+    } 
 
     // Destructor
     ~Matrix() {
@@ -126,21 +166,31 @@ public:
 
 int main(int argc, char const *argv[])
 {
-    Matrix a = Matrix(3, 2);
-    Matrix b = Matrix(2,2);
+    Matrix a = Matrix::ones(24, 15);
+    Matrix b = Matrix::zeros(15,18);
+    Matrix x = Matrix(5,10);
     Matrix c = a*b;
     Matrix d = b+b;
     Matrix e = d.transpose();
-    a.printMatrix();
-    printf("\n\n");
-    b.printMatrix();
-    printf("\n\n");
-    c.printMatrix();
-    printf("\n\n");
-    d.printMatrix();
-    printf("\n\n");
-    e.printMatrix();
-    printf("\n\n");
+
+    std::vector<std::vector<double>> v =    {{1.1, 2.4, 3.5},
+                                            {3.7, -0.9, 0.01}};
+
+    Matrix y = Matrix(v.size(), v[0].size(), v);
+    y.printMatrix();
+
+    // double * inputV = &std::vector<double>()[0];
+
+    // a.printMatrix();
+    // printf("\n\n");
+    // b.printMatrix();
+    // printf("\n\n");
+    // c.printMatrix();
+    // printf("\n\n");
+    // d.printMatrix();
+    // printf("\n\n");
+    // e.printMatrix();
+    // printf("\n\n");
 
     return 0;
 }
