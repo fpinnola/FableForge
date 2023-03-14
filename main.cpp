@@ -1,9 +1,15 @@
 #include <iostream>
 #include <stdio.h>
 #include <vector>
+#include <time.h>
 
 // CPU Matrix Operations
 // Implement operations as CUDA kernels to optimize
+
+double RandomNumber(double Min, double Max)
+{
+    return ((double(std::rand()) / double(RAND_MAX)) * (Max - Min)) + Min;
+}
 
 class Matrix {
 private:
@@ -35,10 +41,11 @@ public:
     } 
 
     static Matrix randN(int rows, int cols) {
+        srand(time(0));
         double * data = (double*) malloc(rows * cols * sizeof(double));
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                data[i * cols + j] = std::rand();
+                data[i * cols + j] = RandomNumber(-10.0, 10.0);
             }
         }
         Matrix a = Matrix(rows,cols,data);
@@ -82,6 +89,24 @@ public:
         if (row < rows && col < cols) {
             data[row * cols + col] = value;
         }
+    }
+
+    void prependVec (double value) {
+        if (cols != 1) {
+            throw std::invalid_argument("Matrix must be of dimension (n, 1)");
+        }
+        
+        double * newData = (double*) malloc((rows + 1) * cols * sizeof(double));
+
+        newData[0] = value;
+
+        for (int i = 0; i < rows; i++) {
+            newData[i+1] = get(i, 0);
+        }
+
+        rows = rows + 1;
+        data = newData;
+
     }
 
     // Display
@@ -177,20 +202,46 @@ int main(int argc, char const *argv[])
                                             {3.7, -0.9, 0.01}};
 
     Matrix y = Matrix(v.size(), v[0].size(), v);
-    y.printMatrix();
+    // y.printMatrix();
 
-    // double * inputV = &std::vector<double>()[0];
+    // Forward Pass test
 
-    // a.printMatrix();
-    // printf("\n\n");
-    // b.printMatrix();
-    // printf("\n\n");
-    // c.printMatrix();
-    // printf("\n\n");
-    // d.printMatrix();
-    // printf("\n\n");
-    // e.printMatrix();
-    // printf("\n\n");
+    Matrix input  = Matrix(3, 1, { {5.4}, {-0.9}, {4.3}});
+
+
+    int inputFeatures = 3;
+
+    int h1Nodes = 1024;
+
+    int h2Nodes = 4096;
+
+    int h3Nodes = 360;
+
+
+    // FORWARD PASS
+
+    // TODO:    Add activation functions
+    //          Cache each layer's output
+    Matrix theta1 = Matrix::randN(h1Nodes, inputFeatures + 1);
+    input.prependVec(1.0); // Add bias
+    Matrix z1 = theta1*input;
+    // z1.printMatrix();
+
+    Matrix theta2 = Matrix::randN(h2Nodes, h1Nodes+1);
+    z1.prependVec(1.0);
+    Matrix z2 =  theta2 * z1;
+    // z2.printMatrix();
+
+    Matrix theta3 = Matrix::randN(h3Nodes, h2Nodes+1);
+    z2.prependVec(1.0);
+    Matrix z3 = theta3 * z2;
+    // z3.printMatrix();
+
+    Matrix theta4 = Matrix::randN(3, h3Nodes+1);
+    z3.prependVec(1.0);
+    Matrix z4 = theta4 * z3;
+    z4.printMatrix();
+
 
     return 0;
 }
