@@ -1,10 +1,252 @@
 #include <iostream>
 #include <fstream>
 #include <set>
+#include <stdio.h>
+#include <algorithm>
+#include <vector>
+#include <map>
+#include <cmath>
+
+double RandomNumber(double Min, double Max)
+{
+    return ((double(std::rand()) / double(RAND_MAX)) * (Max - Min)) + Min;
+}
+
+class Matrix {
+private:
+    int rows, cols;
+    double* data;
+
+public:
+    // Constructors
+    static Matrix zeros(int rows, int cols) {
+        double * data = (double*) malloc(rows * cols * sizeof(double));
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                data[i * cols + j] = 0.0;
+            }
+        }
+        Matrix a = Matrix(rows,cols,data);
+        return a;
+    } 
+
+    static Matrix ones(int rows, int cols) {
+        double * data = (double*) malloc(rows * cols * sizeof(double));
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                data[i * cols + j] = 1.0;
+            }
+        }
+        Matrix a = Matrix(rows,cols,data);
+        return a;
+    } 
+
+    static Matrix randN(int rows, int cols) {
+        srand(time(0));
+        double * data = (double*) malloc(rows * cols * sizeof(double));
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                data[i * cols + j] = RandomNumber(-0.3, 0.3);
+            }
+        }
+        Matrix a = Matrix(rows,cols,data);
+        return a;
+    }
+
+    Matrix (int rows, int cols) : rows(rows), cols(cols) {
+        data = (double*)malloc(rows * cols * sizeof(double));
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                data[i * cols + j] = 0.0;
+            }
+        }
+    }
+
+    Matrix(int rows, int cols, double* data) : rows(rows), cols(cols), data(data) {}
+
+    Matrix (int rows, int cols, std::vector<std::vector<double>> v) : rows(rows), cols(cols) {
+        data = (double*) malloc(rows * cols * sizeof(double));
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                data[i * cols + j] = v[i][j];
+            }
+        }
+    } 
+
+    // Destructor
+    ~Matrix() {
+        delete[] data;
+    }
+
+    // Getter and Setter
+    double get(int row, int col) const {
+        if (!(row < rows && col < cols)) {
+            throw std::out_of_range("Attempted to get value outside of matrix bounds");
+        }
+        return data[row * cols + col];
+    }
+
+    void set(int row, int col, double value) {
+        if (row < rows && col < cols) {
+            data[row * cols + col] = value;
+        }
+    }
+
+    // In place operations
+
+    // Vector operations only (cols = 1)
+    void prependVec (double value) {
+        if (cols != 1) {
+            throw std::invalid_argument("Matrix must be of dimension (n, 1)");
+        }
+        
+        double * newData = (double*) malloc((rows + 1) * cols * sizeof(double));
+
+        newData[0] = value;
+
+        for (int i = 0; i < rows; i++) {
+            newData[i+1] = get(i, 0);
+        }
+
+        rows = rows + 1;
+        data = newData;
+
+    }
+    
+    double expSumVec() {
+        if (cols != 1) {
+            throw std::invalid_argument("Matrix must be of dimension (n, 1)");
+        }
+
+        double sum = 0.0;
+        for (int i = 0; i < rows; i++) {
+            sum += std::exp(get(i,0));
+        }
+
+        return sum;
+    }
+
+    double sumVec() {
+        if (cols != 1) {
+            throw std::invalid_argument("Matrix must be of dimension (n, 1)");
+        }
+
+        double sum = 0.0;
+        for (int i = 0; i < rows; i++) {
+            sum += get(i,0);
+        }
+
+        return sum;
+    }
+
+    void applyFunction(double func (double a)) {
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                set(i, j, func(get(i,j)));
+            }
+        }
+    }
+
+    void applyFunction(double func (double a, double b), double c) {
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                set(i, j, func(get(i,j), c));
+            }
+        }
+    }
+
+    // Display
+    void printMatrix() {
+        for (int i = 0; i < rows; i++) {
+            printf("\n");
+            for (int j = 0; j < cols; j++) {
+                printf("%f ", data[i * cols + j]);
+            }
+        }
+    }
+
+    Matrix operator+(const Matrix& other) const {
+        if (rows != other.rows || cols != other.cols) {
+            throw std::invalid_argument("Matrix dimsension must match for addition");
+        }
+
+        Matrix result(rows, cols);
+
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                result.set(i,j, get(i,j) + other.get(i,j));
+            }
+        }
+
+        return result;
+    }
+
+    Matrix operator-(const Matrix& other) const {
+        if (rows != other.rows || cols != other.cols) {
+            throw std::invalid_argument("Matrix dimsension must match for subtraction");
+        }
+
+        Matrix result(rows, cols);
+
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                result.set(i,j, get(i,j) - other.get(i,j));
+            }
+        }
+
+        return result;
+    }
+
+    Matrix operator*(const Matrix& other) const {
+        if (cols != other.rows) {
+            throw std::invalid_argument("Matrix dimensions must match (m,n) (n,p)");
+        }
+
+        Matrix result(rows, other.cols);
+
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < other.cols; j++) {
+                double sum = 0.0;
+
+                for (int k = 0; k < other.rows; k++) {
+                    sum += get(i,k) * other.get(k,j);
+                }
+
+                result.set(i, j, sum);
+            }
+        }
+        return result;
+    }
+
+    Matrix transpose() const {
+        Matrix result(cols, rows);
+
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                result.set(j, i, get(i,j));
+            }
+        }
+        return result;
+    }
+
+};
+
+
+double leakyRelu(double a) {
+    return std::max(0.01 * a, a);
+}
+
+double softmax(double z, double sum) {
+    printf("%f\n", std::exp(z));
+    // printf("%f\n", std::exp(sum));
+    return std::exp(z) / (sum + 0.000001);
+};
+
 
 int main(int argc, char const *argv[])
 {
-    /* code */
+
+    // READ INPUT FILE
     std::ifstream inputFile("input.txt");
 
     if (!inputFile.is_open()) {
@@ -28,21 +270,77 @@ int main(int argc, char const *argv[])
 
     inputFile.close();
 
-    std::cout << charCount << std::endl;
+    // CREATE ALPHABET
+    // std::set<int> alphabet;
+    std::map<char, int> alphabet;
 
-    // Create alphabet
-    std::set<int> alphabet;
 
 
     // Add characters to set
     for (int i = 0; i < charCount; ++i) {
-        alphabet.insert(*(charList + i));
-        // std::cout << *(charList + i);
+        if (alphabet.find(*(charList + i)) == alphabet.end()) {
+            alphabet[*(charList + i)] = alphabet.size();
+        } 
     }
 
-    // for (auto& str : alphabet) {
-    //     std::cout << "'" << str << ' ' << (char)str << "' ";
-    // }
+    int alphabetSize = (int)alphabet.size();
+
+    // printf("Alphabet size: %i\n",alphabetSize);
+
+    // ALPHABET SIZE 69 characters
+    // NN needs input of 69 nodes
+    // Output 69 Nodes
+
+
+    // Test Forward Pass
+    Matrix inputLayer = Matrix::zeros(alphabetSize, 1);
+    inputLayer.set(alphabet[charList[0]],0,1.0);
+    // printf("First char: %c index %i\n ", charList[0], alphabet[charList[0]]);
+    // inputLayer.printMatrix();
+
+
+    int h1Nodes = 1024;
+
+    int h2Nodes = 4096;
+
+    int h3Nodes = 360;
+
+
+    // FORWARD PASS
+
+    // TODO: Cache each layer's output
+    Matrix theta1 = Matrix::randN(h1Nodes, alphabetSize + 1);
+    inputLayer.prependVec(1.0); // Add bias
+    // input.applyFunction(leakyRelu);
+    // input.printMatrix();
+    Matrix z1 = theta1*inputLayer;
+    z1.applyFunction(leakyRelu);
+    // z1.printMatrix();
+
+    Matrix theta2 = Matrix::randN(h2Nodes, h1Nodes+1);
+    z1.prependVec(1.0);
+    Matrix z2 =  theta2 * z1;
+    z2.applyFunction(leakyRelu);
+
+    // z2.printMatrix();
+
+    Matrix theta3 = Matrix::randN(h3Nodes, h2Nodes+1);
+    z2.prependVec(1.0);
+    Matrix z3 = theta3 * z2;
+    z3.applyFunction(leakyRelu);
+
+    // z3.printMatrix();
+
+    Matrix theta4 = Matrix::randN(alphabetSize, h3Nodes+1);
+    z3.prependVec(1.0);
+    Matrix z4 = theta4 * z3;
+
+    double outputSum = z4.expSumVec();
+
+    printf("SUM: %f\n", outputSum);
+    // z4.printMatrix(); // Output
+    z4.applyFunction(softmax, outputSum);
+    z4.printMatrix(); // Output
 
 
     // Cleanup
