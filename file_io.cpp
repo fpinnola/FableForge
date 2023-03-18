@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include <cmath>
+#include <math.h>
 
 double RandomNumber(double Min, double Max)
 {
@@ -37,8 +38,7 @@ public:
                 data[i * cols + j] = 1.0;
             }
         }
-        Matrix a = Matrix(rows,cols,data);
-        return a;
+        return Matrix(rows,cols,data);
     } 
 
     static Matrix randN(int rows, int cols) {
@@ -73,12 +73,31 @@ public:
         }
     } 
 
+    Matrix (const Matrix& other) {
+        if (other.data) {
+            data = (double*) malloc(other.rows * other.cols * sizeof(double));
+            data = other.data;
+            rows = other.rows;
+            cols = other.cols;
+        }
+    }
+
+    // Matrix (Matrix a) : rows(a.rows), cols(a.cols), data(a.data) {}
+
     // Destructor
     ~Matrix() {
         delete[] data;
     }
 
     // Getter and Setter
+    int getRows() const {
+        return rows;
+    }
+
+    int getCols() const {
+        return cols;
+    }
+
     double get(int row, int col) const {
         if (!(row < rows && col < cols)) {
             throw std::out_of_range("Attempted to get value outside of matrix bounds");
@@ -90,6 +109,17 @@ public:
         if (row < rows && col < cols) {
             data[row * cols + col] = value;
         }
+    }
+
+    static Matrix copy(Matrix a) {
+        double * newData = (double*) malloc(a.rows * a.cols * sizeof(double));
+        for (int i = 0; i < a.rows; i++) {
+            for (int j = 0; j < a.cols; j++) {
+                newData[i * a.cols + j] = a.get(i,j);
+            }
+        }
+
+        return Matrix(a.rows, a.cols, newData);
     }
 
     // In place operations
@@ -163,6 +193,30 @@ public:
                 printf("%f ", data[i * cols + j]);
             }
         }
+        printf("\n");
+    }
+
+    void printSize() {
+        printf("(%i,%i)\n", rows, cols);
+    }
+
+    static Matrix elemMult(Matrix a, Matrix b) {
+        if (b.getRows() != a.getRows() || b.getCols() != a.getCols()) {
+            throw std::invalid_argument("Matrix dimsension must match for element wise multiplication");
+        }
+
+        Matrix result(a.rows, a.cols);
+
+
+        for (int i = 0; i < a.rows; i++) {
+            for (int j = 0; j < a.cols; j++) {
+                result.set(i,j, a.get(i,j) * b.get(i,j));
+            }
+        }
+
+
+        return result;
+
     }
 
     Matrix operator+(const Matrix& other) const {
@@ -237,10 +291,74 @@ double leakyRelu(double a) {
 }
 
 double softmax(double z, double sum) {
-    printf("%f\n", std::exp(z));
+    // printf("%f\n", std::exp(z));
     // printf("%f\n", std::exp(sum));
     return std::exp(z) / (sum + 0.000001);
 };
+
+Matrix oneHot(char a, std::map<char, int> alphabet) {
+    Matrix vector = Matrix::zeros(alphabet.size(), 1);
+    vector.set(alphabet[a],0,1.0);
+    return vector;
+}
+
+double log2(double a) {
+    return std::log(a);
+}
+
+double cost2(Matrix &h, Matrix &y) {
+    double out = 0.0;
+
+    Matrix h_log = Matrix(h);
+    // Matrix h_log = Matrix::copy(h);
+    // h_log.printMatrix();
+    h_log.applyFunction(log2);
+    Matrix h_log2 = Matrix(h);
+    Matrix h_log3 = Matrix::ones(h.getRows(), h.getCols()) - h;
+    
+    h_log3.applyFunction(log2);
+    Matrix q1 = Matrix::elemMult(y, h_log);
+    // q1.printSize();
+    // Matrix q2 = (Matrix::ones(h.getRows(), h.getCols()) - y).elemMult(h_log2);
+    
+    // i1.printSize();
+
+    // Matrix q2 = (i1 - y);
+    // Matrix q3 = q2.elemMult(h_log2);
+
+    // Matrix res = q1 + q3;
+
+    double output = 2.2;
+    printf("output: %f\n", output);
+
+    return output;
+}
+
+double cost(Matrix &h, Matrix &y) {
+
+    double out = 0.0;
+    Matrix h_log = Matrix::copy(h);
+    h_log.printMatrix();
+    h_log.applyFunction(log2);
+
+
+    // (1−𝑦_𝑡𝑟𝑎𝑖𝑛)⋅log(1−𝑦_𝑜𝑢𝑡𝑝𝑢𝑡))
+    Matrix h_log2 = Matrix::copy(h);
+    h_log2 = Matrix::ones(h.getRows(), h.getCols()) - h;
+    h_log2.applyFunction(log2);
+    Matrix q1 = Matrix::elemMult(y, h_log);
+    Matrix i1 = Matrix::ones(y.getRows(), y.getCols());
+    Matrix q2 = (i1 - y);
+    Matrix q3 = Matrix::elemMult(q2, h_log2);
+
+    Matrix res = q1 + q3;
+    res.printMatrix();
+
+    double output = res.sumVec();
+    printf("output: %f\n", output);
+
+    return output;
+}
 
 
 int main(int argc, char const *argv[])
@@ -293,8 +411,7 @@ int main(int argc, char const *argv[])
 
 
     // Test Forward Pass
-    Matrix inputLayer = Matrix::zeros(alphabetSize, 1);
-    inputLayer.set(alphabet[charList[0]],0,1.0);
+    Matrix inputLayer = oneHot(charList[0], alphabet);
     // printf("First char: %c index %i\n ", charList[0], alphabet[charList[0]]);
     // inputLayer.printMatrix();
 
@@ -337,11 +454,33 @@ int main(int argc, char const *argv[])
 
     double outputSum = z4.expSumVec();
 
-    printf("SUM: %f\n", outputSum);
+    // printf("SUM: %f\n", outputSum);
     // z4.printMatrix(); // Output
     z4.applyFunction(softmax, outputSum);
-    z4.printMatrix(); // Output
+    // z4.printMatrix(); // Output
 
+    Matrix expected = oneHot(charList[1], alphabet);
+    // expected.printMatrix();
+    // Matrix loss = expected - z4;
+    // z4.printMatrix(); // Output
+
+    // double result = cost(z4, expected);
+    double result = cost(z4, expected);
+
+    // printf("Cost: %f", forwardCost);
+
+    // Matrix abc = Matrix::ones(12, 1);
+
+    // z4.printSize();
+    // expected.printSize();
+
+
+
+    // double result = res.sumVec();
+
+    // printf("SUM: %f\n", result);
+
+   
 
     // Cleanup
     delete[] charList;
