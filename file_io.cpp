@@ -76,17 +76,24 @@ public:
     Matrix (const Matrix& other) {
         if (other.data) {
             data = (double*) malloc(other.rows * other.cols * sizeof(double));
-            data = other.data;
+            for (int i = 0; i < other.rows; i++) {
+                for (int j = 0; j < other.cols; j++) {
+                    data[i * other.cols + j] = other.data[i * other.cols + j];
+                }
+            }
+            // data = other.data;
             rows = other.rows;
             cols = other.cols;
         }
     }
 
-    // Matrix (Matrix a) : rows(a.rows), cols(a.cols), data(a.data) {}
-
-    // Destructor
+    // // Destructor
     ~Matrix() {
-        delete[] data;
+        if (rows > 0 && cols > 0) {
+            free(data);
+            rows = 0;
+            cols = 0;
+        }
     }
 
     // Getter and Setter
@@ -109,17 +116,6 @@ public:
         if (row < rows && col < cols) {
             data[row * cols + col] = value;
         }
-    }
-
-    static Matrix copy(Matrix a) {
-        double * newData = (double*) malloc(a.rows * a.cols * sizeof(double));
-        for (int i = 0; i < a.rows; i++) {
-            for (int j = 0; j < a.cols; j++) {
-                newData[i * a.cols + j] = a.get(i,j);
-            }
-        }
-
-        return Matrix(a.rows, a.cols, newData);
     }
 
     // In place operations
@@ -198,6 +194,14 @@ public:
 
     void printSize() {
         printf("(%i,%i)\n", rows, cols);
+    }
+
+    void printDataAddress() {
+        printf("address, %p\n", (void*)&data);
+    }
+
+    void printDataOne() {
+        printf("1(%i,%i)data %f\n", rows, cols, data[0]);
     }
 
     static Matrix elemMult(Matrix a, Matrix b) {
@@ -309,15 +313,26 @@ double log2(double a) {
 double cost2(Matrix &h, Matrix &y) {
     double out = 0.0;
 
+    h.printDataOne();
+    y.printDataOne();
+
+
+
     Matrix h_log = Matrix(h);
+    h_log.printDataOne();
     // Matrix h_log = Matrix::copy(h);
     // h_log.printMatrix();
     h_log.applyFunction(log2);
     Matrix h_log2 = Matrix(h);
+    h.printDataOne();
+    h_log2.printDataOne();
+    // printf("h_log2, %p\n", (void*)&h_log2);
+
     Matrix h_log3 = Matrix::ones(h.getRows(), h.getCols()) - h;
+    h_log3.printDataOne();
     
-    h_log3.applyFunction(log2);
-    Matrix q1 = Matrix::elemMult(y, h_log);
+    // h_log3.applyFunction(log2);
+    // Matrix q1 = Matrix::elemMult(y, h_log);
     // q1.printSize();
     // Matrix q2 = (Matrix::ones(h.getRows(), h.getCols()) - y).elemMult(h_log2);
     
@@ -337,23 +352,25 @@ double cost2(Matrix &h, Matrix &y) {
 double cost(Matrix &h, Matrix &y) {
 
     double out = 0.0;
-    Matrix h_log = Matrix::copy(h);
-    h_log.printMatrix();
+    Matrix h_log = Matrix(h);
+    // h_log.printMatrix();
     h_log.applyFunction(log2);
 
 
     // (1−𝑦_𝑡𝑟𝑎𝑖𝑛)⋅log(1−𝑦_𝑜𝑢𝑡𝑝𝑢𝑡))
-    Matrix h_log2 = Matrix::copy(h);
-    h_log2 = Matrix::ones(h.getRows(), h.getCols()) - h;
-    h_log2.applyFunction(log2);
+    Matrix h_log2 = Matrix(h);
+    Matrix h_log2_ones = Matrix::ones(h.getRows(), h.getCols());
+    Matrix h_log3 = h_log2_ones - h;
+    h_log3.applyFunction(log2);
     Matrix q1 = Matrix::elemMult(y, h_log);
     Matrix i1 = Matrix::ones(y.getRows(), y.getCols());
     Matrix q2 = (i1 - y);
     Matrix q3 = Matrix::elemMult(q2, h_log2);
 
     Matrix res = q1 + q3;
-    res.printMatrix();
+    // res.printMatrix();
 
+    // double output = 2.2;
     double output = res.sumVec();
     printf("output: %f\n", output);
 
