@@ -117,6 +117,22 @@ void Matrix::set(int row, int col, double value) {
     }
 }
 
+void Matrix::setColToVal(int col, double value) {
+    if (col < cols ) {
+        for (int i = 0; i < rows; i++) {
+            data[i * cols + col] = value;
+        }
+    }
+}
+
+void Matrix::setCol(int col, Matrix values) {
+    if (col < col && rows == values.getRows()) {
+        for (int i = 0; i < rows; i++) {
+            data[i * cols + col] = values.get(i, col);
+        }
+    }
+}
+
 void Matrix::prependVec (double value) {
     if (cols != 1) {
         throw std::invalid_argument("Matrix must be of dimension (n, 1)");

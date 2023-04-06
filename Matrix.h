@@ -26,6 +26,8 @@ public:
 
     // // Setter methods
     void set(int row, int col, double value);
+    void setColToVal(int col, double value);
+    void setCol(int col, Matrix values);
 
     // // Other methods
     void prependVec (double value);
