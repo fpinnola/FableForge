@@ -7,12 +7,9 @@
 #include <cmath>
 // #include <math.h>
 
+#include "NN.h"
 #include "Matrix.h"
 
-
-double leakyRelu(double a) {
-    return std::max(0.01 * a, a);
-}
 
 double leakyReluDeriv(double x) {
     if (x >= 0) return 1;
@@ -23,11 +20,6 @@ double scalarMultiply(double a, double b) {
     return a * b;
 }
 
-double softmax(double z, double sum) {
-    // printf("%f\n", std::exp(z));
-    // printf("%f\n", std::exp(sum));
-    return std::exp(z) / (sum + 0.000001);
-};
 
 Matrix oneHot(char a, std::map<char, int> alphabet) {
     Matrix vector = Matrix::zeros(alphabet.size(), 1);
@@ -172,53 +164,67 @@ int main(int argc, char const *argv[])
     int h3Nodes = 360;
 
 
+    NeuralNetwork network = NeuralNetwork();
+
+    network.addLayer(h1Nodes, Activation::LeakyRelu, 69);
+    network.addLayer(h2Nodes, Activation::LeakyRelu);
+    network.addLayer(h3Nodes, Activation::LeakyRelu);
+    network.addLayer(69, Activation::Softmax);
+
+    network.printNN();
+
+    Matrix y_hat = network.forwardPass(X);
+    // y_hat.printMatrix();
+
+
+
     // FORWARD PASS
 
     // TODO: Cache each layer's output
-    Matrix theta1 = Matrix::randN(h1Nodes, alphabetSize + 1);
-    inputLayer.prependVec(1.0); // Add bias
-    // input.applyFunction(leakyRelu);
-    // input.printMatrix();
-    Matrix z1 = theta1*inputLayer;
-    z1.applyFunction(leakyRelu);
-    z1.printSize();
-    // z1.printMatrix();
+    // Matrix theta1 = Matrix::randN(h1Nodes, alphabetSize + 1);
+    // inputLayer.prependVec(1.0); // Add bias
+    // // input.applyFunction(leakyRelu);
+    // // input.printMatrix();
+    // Matrix z1 = theta1*inputLayer;
+    // z1.applyFunction(leakyRelu);
+    // z1.printSize();
+    // // z1.printMatrix();
 
-    Matrix theta2 = Matrix::randN(h2Nodes, h1Nodes);
-    // z1.prependVec(1.0);
-    Matrix z2 =  theta2 * z1;
-    z2.applyFunction(leakyRelu);
+    // Matrix theta2 = Matrix::randN(h2Nodes, h1Nodes);
+    // // z1.prependVec(1.0);
+    // Matrix z2 =  theta2 * z1;
+    // z2.applyFunction(leakyRelu);
 
-    // z2.printMatrix();
+    // // z2.printMatrix();
 
-    Matrix theta3 = Matrix::randN(h3Nodes, h2Nodes);
-    // z2.prependVec(1.0);
-    Matrix z3 = theta3 * z2;
-    z3.applyFunction(leakyRelu);
+    // Matrix theta3 = Matrix::randN(h3Nodes, h2Nodes);
+    // // z2.prependVec(1.0);
+    // Matrix z3 = theta3 * z2;
+    // z3.applyFunction(leakyRelu);
 
-    // z3.printMatrix();
+    // // z3.printMatrix();
 
-    Matrix theta4 = Matrix::randN(alphabetSize, h3Nodes);
-    // z3.prependVec(1.0);
-    Matrix z4 = theta4 * z3;
+    // Matrix theta4 = Matrix::randN(alphabetSize, h3Nodes);
+    // // z3.prependVec(1.0);
+    // Matrix z4 = theta4 * z3;
 
-    double outputSum = z4.expSumVec();
+    // double outputSum = z4.expSumVec();
 
-    // printf("SUM: %f\n", outputSum);
-    // z4.printMatrix(); // Output
-    z4.applyFunction(softmax, outputSum);
-    // z4.printMatrix(); // Output
+    // // printf("SUM: %f\n", outputSum);
+    // // z4.printMatrix(); // Output
+    // z4.applyFunction(softmax, outputSum);
+    // // z4.printMatrix(); // Output
 
-    Matrix expected = oneHot(charList[1], alphabet);
+    // Matrix expected = oneHot(charList[1], alphabet);
 
-    double result = cost(z4, expected);
+    // double result = cost(z4, expected);
 
-    printf("Cost: %f\n", result);
+    // printf("Cost: %f\n", result);
 
-    std::vector<Matrix> cache = {X, z1, z2, z3, z4};
-    std::vector<Matrix> W = {theta1, theta2, theta3, theta4};
+    // std::vector<Matrix> cache = {X, z1, z2, z3, z4};
+    // std::vector<Matrix> W = {theta1, theta2, theta3, theta4};
 
-    backprop(z4, expected, cache, W, 0.01);
+    // backprop(z4, expected, cache, W, 0.01);
 
     // Matrix abc = Matrix::ones(12, 1);
 

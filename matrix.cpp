@@ -126,7 +126,7 @@ void Matrix::setColToVal(int col, double value) {
 }
 
 void Matrix::setCol(int col, Matrix values) {
-    if (col < col && rows == values.getRows()) {
+    if (col < cols && rows == values.getRows()) {
         for (int i = 0; i < rows; i++) {
             data[i * cols + col] = values.get(i, col);
         }
@@ -222,6 +222,20 @@ Matrix Matrix::elemMult(Matrix a, Matrix b) {
 
     return result;
 
+}
+
+Matrix& Matrix::operator=(const Matrix& other) {
+    if (this == &other) {
+        return *this;
+    }
+
+    free(data);
+    rows = other.rows;
+    cols = other.cols;
+    data = (double*) malloc(rows * cols * sizeof(double));
+    memcpy(data, other.data, rows * cols * sizeof(double));
+
+    return *this;
 }
 
 Matrix Matrix::operator+(const Matrix& other) const {
