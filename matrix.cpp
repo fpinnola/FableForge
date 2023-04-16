@@ -64,14 +64,14 @@ Matrix Matrix::ones(int rows, int cols) {
         }
     }
     return Matrix(rows,cols,data);
-} 
+}
 
 Matrix Matrix::randN(int rows, int cols) {
     srand(time(0));
     double * data = (double*) malloc(rows * cols * sizeof(double));
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            data[i * cols + j] = randomNum(-0.3, 0.3);
+            data[i * cols + j] = randomNum(-0.15, 0.15);
         }
     }
     Matrix a = Matrix(rows,cols,data);
@@ -109,6 +109,18 @@ double Matrix::get(int row, int col) const {
         throw std::out_of_range("Attempted to get value outside of matrix bounds");
     }
     return data[row * cols + col];
+}
+
+double Matrix::getMax() const {
+    double max = 0.0;
+    for (int i  = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (get(i, j) > max) {
+                max = get(i,j);
+            }
+        }
+    }
+    return max;
 }
 
 void Matrix::set(int row, int col, double value) {
@@ -189,6 +201,17 @@ void Matrix::applyFunction(double func (double a, double b), double c) {
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             set(i, j, func(get(i,j), c));
+        }
+    }
+}
+
+void Matrix::applyFunction(double func (double a, double b), Matrix c) {
+    if (rows != c.getRows() || cols != c.getCols()) {
+        throw std::invalid_argument("Matrix dimsensions must match!");
+    };
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            set(i, j, func(get(i,j), c.get(i,j)));
         }
     }
 }

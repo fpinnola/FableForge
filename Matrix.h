@@ -23,6 +23,7 @@ public:
     int getRows() const;
     int getCols() const;
     double get(int row, int col) const;
+    double getMax() const;
 
     // // Setter methods
     void set(int row, int col, double value);
@@ -35,6 +36,7 @@ public:
     double sumVec();
     void applyFunction(double func (double a));
     void applyFunction(double func (double a, double b), double c);
+    void applyFunction(double func (double a, double b), Matrix c);
     void printMatrix();
     void printSize();
     void printDataAddress();

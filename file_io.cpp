@@ -11,15 +11,9 @@
 #include "Matrix.h"
 
 
-double leakyReluDeriv(double x) {
-    if (x >= 0) return 1;
-    return 0.01;
-}
-
 double scalarMultiply(double a, double b) {
     return a * b;
 }
-
 
 Matrix oneHot(char a, std::map<char, int> alphabet) {
     Matrix vector = Matrix::zeros(alphabet.size(), 1);
@@ -28,18 +22,10 @@ Matrix oneHot(char a, std::map<char, int> alphabet) {
 }
 
 double log2(double a) {
+    if (a == 0.0) {
+        a = 0.000001;
+    }
     return std::log(a);
-}
-
-
-double cost(Matrix &h, Matrix &y) {
-    // Compute log ofo predictions
-    Matrix h_log = Matrix(h);
-    h_log.applyFunction(log2);
-
-    Matrix mulRes = Matrix::elemMult(y, h_log);
-
-    return mulRes.sumVec() * -1.0;
 }
 
 void backprop(Matrix &h, Matrix &y, std::vector<Matrix> cache, std::vector<Matrix> W, double alpha) {
@@ -58,7 +44,7 @@ void backprop(Matrix &h, Matrix &y, std::vector<Matrix> cache, std::vector<Matri
 
     Matrix dZ4 = a4 - y;
     Matrix dW4 = Matrix::elemMult(dZ4, a3.transpose());
-    a3.applyFunction(leakyReluDeriv);
+    // a3.applyFunction(leakyReluDeriv);
     Matrix dZ3 = Matrix::elemMult(Matrix::elemMult(W4.transpose(), dZ4), a3);
 
 
@@ -104,11 +90,19 @@ void backprop(Matrix &h, Matrix &y, std::vector<Matrix> cache, std::vector<Matri
     // W[1] = W[1] - dL_dW1;
 
 
-
-
-
-
     return;
+}
+
+std::vector<std::vector<char>> generateTrainingSet(char* dataset, int dataSize, int numExamples) {
+    std::vector<std::vector<char>> res = std::vector<std::vector<char>>();
+    for (int i = 0; i < numExamples; i++) {
+        int start = std::rand()%(dataSize-0 + 1);
+        std::vector<char> vals = std::vector<char>();
+        vals.push_back(*(dataset + start));
+        vals.push_back(*(dataset + start + 1));
+        res.push_back(vals);
+    }
+    return res;
 }
 
 int main(int argc, char const *argv[])
@@ -144,19 +138,31 @@ int main(int argc, char const *argv[])
     // Add characters to set
     for (int i = 0; i < charCount; ++i) {
         if (alphabet.find(*(charList + i)) == alphabet.end()) {
+            char v = *(charList + i);
+            // printf("%c, %i\n", v, (int)v); // UNCOMMENT to print alphabet
             alphabet[*(charList + i)] = alphabet.size();
-        } 
+        }
     }
 
+    // Number of unique tokens in dataset
+    // Input/Output token will need this number of classes
     int alphabetSize = (int)alphabet.size();
 
-    // ALPHABET SIZE 69 characters
-    // NN needs input of 69 nodes
-    // Output 69 Nodes
+    // Create Training Set
+    int datasetSize = charCount;
+    printf("datasetSize: %i\n", datasetSize);
+    std::vector<std::vector<char>> trainingSet = generateTrainingSet(charList, datasetSize, 500);
+
+    // Print Training Set
+    // for (int i = 0; i < trainingSet.size(); i++) {
+    //     printf("%c, %c\n", trainingSet[i][0], trainingSet[i][1]);
+    // }
 
 
     // Test Forward Pass
     Matrix X = oneHot(charList[0], alphabet);
+    Matrix expected = oneHot(charList[1], alphabet);
+
     Matrix inputLayer = Matrix(X);
 
     int h1Nodes = 1024;
@@ -166,56 +172,23 @@ int main(int argc, char const *argv[])
 
     NeuralNetwork network = NeuralNetwork();
 
-    network.addLayer(h1Nodes, Activation::LeakyRelu, 69);
+    network.addLayer(h1Nodes, Activation::LeakyRelu, alphabetSize);
     network.addLayer(h2Nodes, Activation::LeakyRelu);
+    // network.addLayer(2048*8, Activation::LeakyRelu);
+    // network.addLayer(2048*8, Activation::LeakyRelu);
+    // network.addLayer(2048*8, Activation::LeakyRelu);
     network.addLayer(h3Nodes, Activation::LeakyRelu);
-    network.addLayer(69, Activation::Softmax);
+    network.addLayer(alphabetSize, Activation::Softmax);
 
-    network.printNN();
+    // network.printNN();
 
-    Matrix y_hat = network.forwardPass(X);
+    Matrix y_hat = network.forwardPass(X, expected);
     // y_hat.printMatrix();
 
 
 
     // FORWARD PASS
 
-    // TODO: Cache each layer's output
-    // Matrix theta1 = Matrix::randN(h1Nodes, alphabetSize + 1);
-    // inputLayer.prependVec(1.0); // Add bias
-    // // input.applyFunction(leakyRelu);
-    // // input.printMatrix();
-    // Matrix z1 = theta1*inputLayer;
-    // z1.applyFunction(leakyRelu);
-    // z1.printSize();
-    // // z1.printMatrix();
-
-    // Matrix theta2 = Matrix::randN(h2Nodes, h1Nodes);
-    // // z1.prependVec(1.0);
-    // Matrix z2 =  theta2 * z1;
-    // z2.applyFunction(leakyRelu);
-
-    // // z2.printMatrix();
-
-    // Matrix theta3 = Matrix::randN(h3Nodes, h2Nodes);
-    // // z2.prependVec(1.0);
-    // Matrix z3 = theta3 * z2;
-    // z3.applyFunction(leakyRelu);
-
-    // // z3.printMatrix();
-
-    // Matrix theta4 = Matrix::randN(alphabetSize, h3Nodes);
-    // // z3.prependVec(1.0);
-    // Matrix z4 = theta4 * z3;
-
-    // double outputSum = z4.expSumVec();
-
-    // // printf("SUM: %f\n", outputSum);
-    // // z4.printMatrix(); // Output
-    // z4.applyFunction(softmax, outputSum);
-    // // z4.printMatrix(); // Output
-
-    // Matrix expected = oneHot(charList[1], alphabet);
 
     // double result = cost(z4, expected);
 

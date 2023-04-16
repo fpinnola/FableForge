@@ -1,4 +1,4 @@
-
+#include <tuple>
 #include "Matrix.h"
 
 enum Activation {
@@ -14,6 +14,7 @@ private:
     std::vector<Matrix> b;
     std::vector<Activation> g;
     std::vector<Matrix> a;
+    std::vector<Matrix> z;
 
 public:
     NeuralNetwork(/* args */);
@@ -28,8 +29,12 @@ public:
     void updateWeightsLayer(int layer, Matrix vals);
 
     void updateActivationLayer(int layer, Matrix vals);
+    void updateLayerOutput(int layer, Matrix vals);
 
     void printNN();
 
-    Matrix forwardPass(Matrix X);
+    Matrix forwardPass(Matrix X, Matrix Y);
+    void trainingStep(Matrix X, Matrix Y);
+
+    std::tuple<Matrix, Matrix, Matrix> backprop(int layer, Matrix dA);
 };
