@@ -4,21 +4,22 @@
 
 #include "Matrix.h"
 #include "NN.h"
+#include "matrixGPU.cuh"
 
-double leakyRelu(double a) {
-    return std::max(0.01 * a, a);
+float leakyRelu(float a) {
+    return std::max(0.01f * a, a);
 };
 
-double leakyReluDeriv(double x) {
+float leakyReluDeriv(float x) {
     if (x >= 0) return 1;
     return 0.01;
 };
 
-double softmax(double z, double sum) {
+float softmax(float z, float sum) {
     return std::exp(z) / (sum);
 };
 
-double log2loss(double p, double y) {
+float log2loss(float p, float y) {
     if (p == 0.0) {
         p = 0.000001;
     }
@@ -26,7 +27,7 @@ double log2loss(double p, double y) {
     return y * std::log(p);
 };
 
-double cost(Matrix &h, Matrix &y) {
+float cost(Matrix &h, Matrix &y) {
     // Compute log ofo predictions
     Matrix h_log = Matrix(h);
     h_log.applyFunction(log2loss, y);
@@ -39,7 +40,11 @@ double cost(Matrix &h, Matrix &y) {
 
 void NeuralNetwork::addLayer(int numNodes, Activation activation) {
     int layer = W.size();
-    W.push_back(Matrix::randN(W[layer - 1].getCols(), numNodes));
+    int prevSize = inputSize;
+    if (layer > 0) {
+        prevSize = W[layer - 1].getCols();
+    };
+    W.push_back(Matrix::randN(prevSize, numNodes));
     b.push_back(Matrix(numNodes, 1)); 
     g.push_back(activation);
     a.push_back(Matrix::ones(numNodes, 1));
@@ -56,7 +61,7 @@ void NeuralNetwork::addLayer(int numNodes, Activation activation, int input) {
 }
 
 
-void NeuralNetwork::updateBiasLayer(int layer, double val) {
+void NeuralNetwork::updateBiasLayer(int layer, float val) {
         b[layer].setColToVal(0, val);
 }
 
@@ -89,7 +94,7 @@ void NeuralNetwork::printNN() {
 Matrix NeuralNetwork::forwardPass(Matrix X, Matrix Y) {
 
     for (int i = 0; i < W.size(); i++) {
-        printf("Forward pass layer %i\n", i+1);
+        // printf("Forward pass layer %i\n", i+1);
 
         Matrix a_temp = Matrix::zeros(1,1);
         if (i == 0) {
@@ -98,8 +103,8 @@ Matrix NeuralNetwork::forwardPass(Matrix X, Matrix Y) {
             a_temp = a[i-1];
         }
 
-        a_temp.printSize();
-        W[i].printSize();
+        // a_temp.printSize();
+        // W[i].printSize();
 
         Matrix z_temp = (W[i].transpose())*a_temp + b[i];
         updateLayerOutput(i, z_temp);
@@ -110,7 +115,7 @@ Matrix NeuralNetwork::forwardPass(Matrix X, Matrix Y) {
             // Leaky Relu
             z_temp.applyFunction(leakyRelu);
             updateActivationLayer(i, z_temp);
-            z_temp.printSize();
+            // z_temp.printSize();
 
         } else if (g[i] == 2) {
             // Softmax
@@ -119,10 +124,10 @@ Matrix NeuralNetwork::forwardPass(Matrix X, Matrix Y) {
 
             // Subtract max to normalize, prevent NaN during exp of sum
             z_temp = z_temp - maxVal;
-            double z_sum = z_temp.expSumVec();
+            float z_sum = z_temp.expSumVec();
             // z_temp.printMatrix();
             z_temp.applyFunction(softmax, z_sum);
-            z_temp.printSize();
+            // z_temp.printSize();
 
             updateActivationLayer(i, z_temp);
         }
@@ -130,10 +135,73 @@ Matrix NeuralNetwork::forwardPass(Matrix X, Matrix Y) {
 
 
     Matrix y_hat = a[a.size() - 1];
-    double pass_cost = cost(y_hat, Y);
+    float pass_cost = cost(y_hat, Y);
     printf("Forward pass complete!\nCost: %f\n", pass_cost);
 
     return y_hat;
+}
+
+Matrix NeuralNetwork::forwardPassGPU(Matrix X, Matrix Y) {
+    // User Kernel Functions
+
+    for (int i = 0; i < W.size(); i++) {    
+        // printf("Forward pass layer %i\n", i+1);
+
+        Matrix a_temp = Matrix::zeros(1,1);
+        if (i == 0) {
+            a_temp = X;
+        } else {
+            a_temp = a[i-1];
+        }
+
+        // a_temp.printSize();
+        // W[i].printSize();
+
+        Matrix W_t = W[i].transpose(); // GPU transpose
+        
+        float* W_t2_vals = MatrixGPU::matrixMul(W_t.getVals(), a_temp.getVals(), W_t.getRows(), W_t.getCols(), a_temp.getRows(), a_temp.getCols()); // GPU Multiply
+
+        float* z_temp_vals = MatrixGPU::matrixAdd(W_t2_vals, b[i].getVals(), b[i].getRows() * b[i].getCols()); // GPU Add
+
+        Matrix z_temp = Matrix(b[i].getRows(), 1, z_temp_vals);
+
+        updateLayerOutput(i, z_temp);
+
+        if (g[i] == 1) {
+            // Leaky Relu
+            z_temp.applyFunction(leakyRelu); // GPU
+            updateActivationLayer(i, z_temp);
+            // z_temp.printSize();
+
+        } else if (g[i] == 2) {
+            // Softmax
+            Matrix maxVal = Matrix(z_temp.getRows(), 1);
+            maxVal.setColToVal(0, z_temp.getMax());
+
+            // Subtract max to normalize, prevent NaN during exp of sum
+            z_temp = z_temp - maxVal; // GPU subtraction
+            float z_sum = z_temp.expSumVec(); // GPU summation
+            // z_temp.printMatrix();
+            z_temp.applyFunction(softmax, z_sum); // GPU
+            // z_temp.printSize();
+
+            updateActivationLayer(i, z_temp);
+        }
+    }
+
+    Matrix y_hat = a[a.size() - 1];
+    float pass_cost = cost(y_hat, Y);
+    printf("Forward pass complete!\nCost: %f\n", pass_cost);
+
+    return y_hat;
+
+
+}
+
+void NeuralNetwork::trainingStepGPU(Matrix X, Matrix Y) {
+
+    Matrix y_hat = forwardPassGPU(X, Y);
+    Matrix dA = y_hat - Y; // GPU 
 }
 
 void NeuralNetwork::trainingStep(Matrix X, Matrix Y) {
@@ -142,7 +210,7 @@ void NeuralNetwork::trainingStep(Matrix X, Matrix Y) {
     Matrix dA = y_hat - Y;
 
     
-    
+
 }
 
 // TODO: implement backpropagation
@@ -160,8 +228,9 @@ std::tuple<Matrix, Matrix, Matrix> NeuralNetwork::backprop(int layer, Matrix dA)
 
 
 
-NeuralNetwork::NeuralNetwork(/* args */)
+NeuralNetwork::NeuralNetwork(int size)
 {
+    inputSize = size;
     W = std::vector<Matrix>();
     b = std::vector<Matrix>();
     g = std::vector<Activation>();

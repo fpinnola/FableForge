@@ -15,16 +15,17 @@ private:
     std::vector<Activation> g;
     std::vector<Matrix> a;
     std::vector<Matrix> z;
+    int inputSize;
 
 public:
-    NeuralNetwork(/* args */);
+    NeuralNetwork(int size);
     ~NeuralNetwork();
 
 
     void addLayer(int numNodes, Activation activation);
     void addLayer(int numNodes, Activation activation, int input);
 
-    void updateBiasLayer(int layer, double val);
+    void updateBiasLayer(int layer, float val);
 
     void updateWeightsLayer(int layer, Matrix vals);
 
@@ -34,7 +35,10 @@ public:
     void printNN();
 
     Matrix forwardPass(Matrix X, Matrix Y);
+    Matrix forwardPassGPU(Matrix X, Matrix Y);
     void trainingStep(Matrix X, Matrix Y);
+    void trainingStepGPU(Matrix X, Matrix Y);
+
 
     std::tuple<Matrix, Matrix, Matrix> backprop(int layer, Matrix dA);
 };

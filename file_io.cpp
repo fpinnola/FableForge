@@ -11,7 +11,7 @@
 #include "Matrix.h"
 
 
-double scalarMultiply(double a, double b) {
+float scalarMultiply(float a, float b) {
     return a * b;
 }
 
@@ -21,14 +21,14 @@ Matrix oneHot(char a, std::map<char, int> alphabet) {
     return vector;
 }
 
-double log2(double a) {
-    if (a == 0.0) {
-        a = 0.000001;
+float log2C(float a) noexcept {
+    if (a == 0.0f) {
+        a = 0.000001f;
     }
     return std::log(a);
 }
 
-void backprop(Matrix &h, Matrix &y, std::vector<Matrix> cache, std::vector<Matrix> W, double alpha) {
+void backprop(Matrix &h, Matrix &y, std::vector<Matrix> cache, std::vector<Matrix> W, float alpha) {
 
     Matrix dL_da4 = h - y;
 
@@ -158,41 +158,41 @@ int main(int argc, char const *argv[])
     //     printf("%c, %c\n", trainingSet[i][0], trainingSet[i][1]);
     // }
 
-
-    // Test Forward Pass
-    Matrix X = oneHot(charList[0], alphabet);
-    Matrix expected = oneHot(charList[1], alphabet);
-
-    Matrix inputLayer = Matrix(X);
-
-    int h1Nodes = 1024;
-    int h2Nodes = 4096;
-    int h3Nodes = 360;
-
-
-    NeuralNetwork network = NeuralNetwork();
-
-    network.addLayer(h1Nodes, Activation::LeakyRelu, alphabetSize);
-    network.addLayer(h2Nodes, Activation::LeakyRelu);
-    // network.addLayer(2048*8, Activation::LeakyRelu);
-    // network.addLayer(2048*8, Activation::LeakyRelu);
-    // network.addLayer(2048*8, Activation::LeakyRelu);
-    network.addLayer(h3Nodes, Activation::LeakyRelu);
+    // Create NN
+    NeuralNetwork network = NeuralNetwork(alphabetSize);
+    network.addLayer(1024, Activation::LeakyRelu);
+    network.addLayer(2048, Activation::LeakyRelu);
+    network.addLayer(2048, Activation::LeakyRelu);
+    network.addLayer(2048, Activation::LeakyRelu);
     network.addLayer(alphabetSize, Activation::Softmax);
 
     // network.printNN();
+    // network.trainingStepGPU()
 
+    // Training loop
+    // for (int i = 0; i < 1; i++) {
+    //     Matrix X = oneHot(trainingSet[i][0], alphabet);
+    //     Matrix expected = oneHot(trainingSet[i][1], alphabet);
+    //     printf("Run %i\n", i);
+    //     Matrix y_hat = network.forwardPass(X, expected);
+    //     printf("\n");
+    // }
+
+    Matrix X = oneHot(trainingSet[0][0], alphabet);
+    Matrix expected = oneHot(trainingSet[0][1], alphabet);
     Matrix y_hat = network.forwardPass(X, expected);
-    // y_hat.printMatrix();
+    Matrix y_hat2 = network.forwardPassGPU(X, expected);
 
 
-
-    // FORWARD PASS
-
-
-    // double result = cost(z4, expected);
-
-    // printf("Cost: %f\n", result);
+    // Training loop GPU
+    // for (int i = 0; i < 1; i++) {
+    //     Matrix X = oneHot(trainingSet[i][0], alphabet);
+    //     Matrix expected = oneHot(trainingSet[i][1], alphabet);
+    //     printf("Run %i\n", i);
+    //     Matrix y_hat = network.forwardPassGPU(X, expected);
+    //     printf("\n");
+    // }
+    // network.printNN();
 
     // std::vector<Matrix> cache = {X, z1, z2, z3, z4};
     // std::vector<Matrix> W = {theta1, theta2, theta3, theta4};
@@ -206,7 +206,7 @@ int main(int argc, char const *argv[])
 
 
 
-    // double result = res.sumVec();
+    // float result = res.sumVec();
 
     // printf("SUM: %f\n", result);
 

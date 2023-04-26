@@ -5,13 +5,14 @@
 #include <map>
 #include <cmath>
 #include <math.h>
+#include <cstring>
 
-double randomNum(double Min, double Max) {
-    return ((double(std::rand()) / double(RAND_MAX)) * (Max - Min)) + Min;
+float randomNum(float Min, float Max) {
+    return ((float(std::rand()) / float(RAND_MAX)) * (Max - Min)) + Min;
 };
 
 Matrix::Matrix (int rows, int cols) : rows(rows), cols(cols) {
-    data = (double*)malloc(rows * cols * sizeof(double));
+    data = (float*)malloc(rows * cols * sizeof(float));
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             data[i * cols + j] = 0.0;
@@ -19,10 +20,10 @@ Matrix::Matrix (int rows, int cols) : rows(rows), cols(cols) {
     }
 }
 
-Matrix::Matrix(int rows, int cols, double* data) : rows(rows), cols(cols), data(data) {}
+Matrix::Matrix(int rows, int cols, float* data) : rows(rows), cols(cols), data(data) {}
 
-Matrix::Matrix (int rows, int cols, std::vector<std::vector<double>> v) : rows(rows), cols(cols) {
-    data = (double*) malloc(rows * cols * sizeof(double));
+Matrix::Matrix (int rows, int cols, std::vector<std::vector<float>> v) : rows(rows), cols(cols) {
+    data = (float*) malloc(rows * cols * sizeof(float));
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             data[i * cols + j] = v[i][j];
@@ -32,7 +33,7 @@ Matrix::Matrix (int rows, int cols, std::vector<std::vector<double>> v) : rows(r
 
 Matrix::Matrix (const Matrix& other) {
     if (other.data) {
-        data = (double*) malloc(other.rows * other.cols * sizeof(double));
+        data = (float*) malloc(other.rows * other.cols * sizeof(float));
         for (int i = 0; i < other.rows; i++) {
             for (int j = 0; j < other.cols; j++) {
                 data[i * other.cols + j] = other.data[i * other.cols + j];
@@ -46,7 +47,7 @@ Matrix::Matrix (const Matrix& other) {
 
 
 Matrix Matrix::zeros(int rows, int cols) {
-    double * data = (double*) malloc(rows * cols * sizeof(double));
+    float * data = (float*) malloc(rows * cols * sizeof(float));
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             data[i * cols + j] = 0.0;
@@ -57,7 +58,7 @@ Matrix Matrix::zeros(int rows, int cols) {
 } 
 
 Matrix Matrix::ones(int rows, int cols) {
-    double * data = (double*) malloc(rows * cols * sizeof(double));
+    float * data = (float*) malloc(rows * cols * sizeof(float));
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             data[i * cols + j] = 1.0;
@@ -68,7 +69,7 @@ Matrix Matrix::ones(int rows, int cols) {
 
 Matrix Matrix::randN(int rows, int cols) {
     srand(time(0));
-    double * data = (double*) malloc(rows * cols * sizeof(double));
+    float * data = (float*) malloc(rows * cols * sizeof(float));
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             data[i * cols + j] = randomNum(-0.15, 0.15);
@@ -104,15 +105,15 @@ int Matrix::getCols() const {
     return cols;
 }
 
-double Matrix::get(int row, int col) const {
+float Matrix::get(int row, int col) const {
     if (!(row < rows && col < cols)) {
         throw std::out_of_range("Attempted to get value outside of matrix bounds");
     }
     return data[row * cols + col];
 }
 
-double Matrix::getMax() const {
-    double max = 0.0;
+float Matrix::getMax() const {
+    float max = 0.0;
     for (int i  = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             if (get(i, j) > max) {
@@ -123,13 +124,17 @@ double Matrix::getMax() const {
     return max;
 }
 
-void Matrix::set(int row, int col, double value) {
+float* Matrix::getVals() const {
+    return data;
+}
+
+void Matrix::set(int row, int col, float value) {
     if (row < rows && col < cols) {
         data[row * cols + col] = value;
     }
 }
 
-void Matrix::setColToVal(int col, double value) {
+void Matrix::setColToVal(int col, float value) {
     if (col < cols ) {
         for (int i = 0; i < rows; i++) {
             data[i * cols + col] = value;
@@ -145,12 +150,12 @@ void Matrix::setCol(int col, Matrix values) {
     }
 }
 
-void Matrix::prependVec (double value) {
+void Matrix::prependVec (float value) {
     if (cols != 1) {
         throw std::invalid_argument("Matrix must be of dimension (n, 1)");
     }
     
-    double * newData = (double*) malloc((rows + 1) * cols * sizeof(double));
+    float * newData = (float*) malloc((rows + 1) * cols * sizeof(float));
 
     newData[0] = value;
 
@@ -163,12 +168,12 @@ void Matrix::prependVec (double value) {
 
 }
 
-double Matrix::expSumVec() {
+float Matrix::expSumVec() {
     if (cols != 1) {
         throw std::invalid_argument("Matrix must be of dimension (n, 1)");
     }
 
-    double sum = 0.0;
+    float sum = 0.0;
     for (int i = 0; i < rows; i++) {
         sum += std::exp(get(i,0));
     }
@@ -176,12 +181,12 @@ double Matrix::expSumVec() {
     return sum;
 }
 
-double Matrix::sumVec() {
+float Matrix::sumVec() {
     if (cols != 1) {
         throw std::invalid_argument("Matrix must be of dimension (n, 1)");
     }
 
-    double sum = 0.0;
+    float sum = 0.0;
     for (int i = 0; i < rows; i++) {
         sum += get(i,0);
     }
@@ -189,7 +194,7 @@ double Matrix::sumVec() {
     return sum;
 }
 
-void Matrix::applyFunction(double func (double a)) {
+void Matrix::applyFunction(float func (float a)) {
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             set(i, j, func(get(i,j)));
@@ -197,7 +202,7 @@ void Matrix::applyFunction(double func (double a)) {
     }
 }
 
-void Matrix::applyFunction(double func (double a, double b), double c) {
+void Matrix::applyFunction(float func (float a, float b), float c) {
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             set(i, j, func(get(i,j), c));
@@ -205,7 +210,7 @@ void Matrix::applyFunction(double func (double a, double b), double c) {
     }
 }
 
-void Matrix::applyFunction(double func (double a, double b), Matrix c) {
+void Matrix::applyFunction(float func (float a, float b), Matrix c) {
     if (rows != c.getRows() || cols != c.getCols()) {
         throw std::invalid_argument("Matrix dimsensions must match!");
     };
@@ -255,8 +260,8 @@ Matrix& Matrix::operator=(const Matrix& other) {
     free(data);
     rows = other.rows;
     cols = other.cols;
-    data = (double*) malloc(rows * cols * sizeof(double));
-    memcpy(data, other.data, rows * cols * sizeof(double));
+    data = (float*) malloc(rows * cols * sizeof(float));
+    memcpy(data, other.data, rows * cols * sizeof(float));
 
     return *this;
 }
@@ -302,7 +307,7 @@ Matrix Matrix::operator*(const Matrix& other) const {
 
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < other.cols; j++) {
-            double sum = 0.0;
+            float sum = 0.0;
 
             for (int k = 0; k < other.rows; k++) {
                 sum += get(i,k) * other.get(k,j);

@@ -8,8 +8,8 @@ class Matrix {
 public:
     // Constructor
     Matrix (int rows, int cols);
-    Matrix(int rows, int cols, double* data);
-    Matrix (int rows, int cols, std::vector<std::vector<double>> v);
+    Matrix(int rows, int cols, float* data);
+    Matrix (int rows, int cols, std::vector<std::vector<float>> v);
     Matrix (const Matrix& other);
 
     ~Matrix();
@@ -22,21 +22,22 @@ public:
 
     int getRows() const;
     int getCols() const;
-    double get(int row, int col) const;
-    double getMax() const;
+    float get(int row, int col) const;
+    float getMax() const;
+    float* getVals() const;
 
     // // Setter methods
-    void set(int row, int col, double value);
-    void setColToVal(int col, double value);
+    void set(int row, int col, float value);
+    void setColToVal(int col, float value);
     void setCol(int col, Matrix values);
 
     // // Other methods
-    void prependVec (double value);
-    double expSumVec();
-    double sumVec();
-    void applyFunction(double func (double a));
-    void applyFunction(double func (double a, double b), double c);
-    void applyFunction(double func (double a, double b), Matrix c);
+    void prependVec (float value);
+    float expSumVec();
+    float sumVec();
+    void applyFunction(float func (float a));
+    void applyFunction(float func (float a, float b), float c);
+    void applyFunction(float func (float a, float b), Matrix c);
     void printMatrix();
     void printSize();
     void printDataAddress();
@@ -53,7 +54,7 @@ public:
 
 private:
     int rows, cols;
-    double* data;
+    float* data;
 };
 
 #endif
