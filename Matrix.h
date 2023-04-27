@@ -44,6 +44,7 @@ public:
     void printDataOne();
 
     static Matrix elemMult(Matrix a, Matrix b);
+    Matrix scalarMult(float b);
     Matrix& operator=(const Matrix& other) ;
     Matrix operator+(const Matrix& other) const;
     Matrix operator-(const Matrix& other) const;

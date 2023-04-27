@@ -15,6 +15,7 @@ private:
     std::vector<Activation> g;
     std::vector<Matrix> a;
     std::vector<Matrix> z;
+    std::vector<float> costHistory;
     int inputSize;
 
 public:
@@ -33,6 +34,7 @@ public:
     void updateLayerOutput(int layer, Matrix vals);
 
     void printNN();
+    void printAvgCost();
 
     Matrix forwardPass(Matrix X, Matrix Y);
     Matrix forwardPassGPU(Matrix X, Matrix Y);
@@ -40,5 +42,5 @@ public:
     void trainingStepGPU(Matrix X, Matrix Y);
 
 
-    std::tuple<Matrix, Matrix, Matrix> backprop(int layer, Matrix dA);
+    std::tuple<Matrix, Matrix, float> backprop(int layer, Matrix dA);
 };

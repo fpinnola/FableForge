@@ -108,6 +108,37 @@ std::vector<std::vector<char>> generateTrainingSet(char* dataset, int dataSize, 
 int main(int argc, char const *argv[])
 {
 
+    std::vector<std::vector<float>> x1_val = {{1}, {0}}; // 0
+    
+    std::vector<std::vector<float>> y1_val = {{0}, {1}}; // 1
+
+    std::vector<std::vector<float>> x2_val = {{0}, {1}}; // 1
+    std::vector<std::vector<float>> y2_val = {{1}, {0}}; // 0
+
+    Matrix X1 = Matrix(2,1, x1_val);
+    Matrix X2 = Matrix(2,1, x2_val);
+
+    // X1.printMatrix();
+    // X2.printMatrix();
+
+    Matrix Y1 = Matrix(2,1, y1_val);
+    Matrix Y2 = Matrix(2,1, y2_val);
+    // Y1.printMatrix();
+    // Y2.printMatrix();
+
+    NeuralNetwork network1(2);
+    network1.addLayer(2, Activation::LeakyRelu);
+    network1.addLayer(2, Activation::Softmax);
+
+    for (int i = 0; i < 1000; i++) {
+        network1.trainingStep(X1, Y1);
+        network1.trainingStep(X2, Y2);
+        if (i % 1 == 0)
+            network1.printAvgCost();
+    }
+
+    return 0;
+
     // READ INPUT FILE
     std::ifstream inputFile("input.txt");
 
@@ -151,7 +182,7 @@ int main(int argc, char const *argv[])
     // Create Training Set
     int datasetSize = charCount;
     printf("datasetSize: %i\n", datasetSize);
-    std::vector<std::vector<char>> trainingSet = generateTrainingSet(charList, datasetSize, 500);
+    std::vector<std::vector<char>> trainingSet = generateTrainingSet(charList, datasetSize, 10000);
 
     // Print Training Set
     // for (int i = 0; i < trainingSet.size(); i++) {
@@ -160,28 +191,30 @@ int main(int argc, char const *argv[])
 
     // Create NN
     NeuralNetwork network = NeuralNetwork(alphabetSize);
-    network.addLayer(1024, Activation::LeakyRelu);
+    network.addLayer(256, Activation::LeakyRelu);
     network.addLayer(2048, Activation::LeakyRelu);
-    network.addLayer(2048, Activation::LeakyRelu);
-    network.addLayer(2048, Activation::LeakyRelu);
+    // network.addLayer(2048, Activation::LeakyRelu);
+    // network.addLayer(2048, Activation::LeakyRelu);
     network.addLayer(alphabetSize, Activation::Softmax);
 
-    // network.printNN();
-    // network.trainingStepGPU()
+    network.printNN();
+
 
     // Training loop
-    // for (int i = 0; i < 1; i++) {
-    //     Matrix X = oneHot(trainingSet[i][0], alphabet);
-    //     Matrix expected = oneHot(trainingSet[i][1], alphabet);
-    //     printf("Run %i\n", i);
-    //     Matrix y_hat = network.forwardPass(X, expected);
-    //     printf("\n");
-    // }
+    for (int i = 0; i < trainingSet.size(); i++) {
+        Matrix X = oneHot(trainingSet[i][0], alphabet);
+        Matrix expected = oneHot(trainingSet[i][1], alphabet);
+        // printf("Run %i\n", i);
+        network.trainingStep(X, expected);
+        if (i % 1000 == 0)
+            network.printAvgCost();
+        // printf("\n");
+    }
 
-    Matrix X = oneHot(trainingSet[0][0], alphabet);
-    Matrix expected = oneHot(trainingSet[0][1], alphabet);
-    Matrix y_hat = network.forwardPass(X, expected);
-    Matrix y_hat2 = network.forwardPassGPU(X, expected);
+    // Matrix X = oneHot(trainingSet[0][0], alphabet);
+    // Matrix expected = oneHot(trainingSet[0][1], alphabet);
+    // network.trainingStep(X, expected);
+    // Matrix y_hat2 = network.forwardPassGPU(X, expected);
 
 
     // Training loop GPU

@@ -68,7 +68,7 @@ Matrix Matrix::ones(int rows, int cols) {
 }
 
 Matrix Matrix::randN(int rows, int cols) {
-    srand(time(0));
+    // srand(time(0));
     float * data = (float*) malloc(rows * cols * sizeof(float));
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
@@ -231,6 +231,18 @@ void Matrix::printDataAddress() {
 
 void Matrix::printDataOne() {
     printf("1(%i,%i)data %f\n", rows, cols, data[0]);
+}
+
+Matrix Matrix::scalarMult(float b) {
+    Matrix result(rows, cols);
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            result.set(i,j, get(i,j) * b);
+        }
+    }
+
+    return result;
 }
 
 Matrix Matrix::elemMult(Matrix a, Matrix b) {
