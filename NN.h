@@ -34,9 +34,10 @@ public:
     void updateLayerOutput(int layer, Matrix vals);
 
     void printNN();
-    void printAvgCost();
+    float getAvgCost();
 
     Matrix forwardPass(Matrix X, Matrix Y);
+    Matrix predict(Matrix X);
     Matrix forwardPassGPU(Matrix X, Matrix Y);
     void trainingStep(Matrix X, Matrix Y);
     void trainingStepGPU(Matrix X, Matrix Y);

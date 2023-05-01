@@ -5,7 +5,6 @@
 #include <vector>
 #include <map>
 #include <cmath>
-// #include <math.h>
 
 #include "NN.h"
 #include "Matrix.h"
@@ -28,71 +27,6 @@ float log2C(float a) noexcept {
     return std::log(a);
 }
 
-void backprop(Matrix &h, Matrix &y, std::vector<Matrix> cache, std::vector<Matrix> W, float alpha) {
-
-    Matrix dL_da4 = h - y;
-
-    Matrix a4 = Matrix(cache[4]);
-    Matrix a3 = Matrix(cache[3]);
-    Matrix a2 = Matrix(cache[2]);
-    Matrix a1 = Matrix(cache[1]);
-
-    Matrix W4 = Matrix(W[3]);
-    Matrix W3 = Matrix(W[2]);
-    Matrix W2 = Matrix(W[1]);
-    Matrix W1 = Matrix(W[0]);
-
-    Matrix dZ4 = a4 - y;
-    Matrix dW4 = Matrix::elemMult(dZ4, a3.transpose());
-    // a3.applyFunction(leakyReluDeriv);
-    Matrix dZ3 = Matrix::elemMult(Matrix::elemMult(W4.transpose(), dZ4), a3);
-
-
-
-    // Matrix dL_da3 = W[3].transpose() * dL_dz4;
-    // Matrix z3 = Matrix(cache[3]);
-    // z3.applyFunction(leakyReluDeriv);
-    // Matrix dL_dz3 = Matrix::elemMult(dL_da3, z3);
-
-    // Matrix dL_da2 = W[2].transpose() * dL_dz3;
-    // Matrix z2 = Matrix(cache[2]);
-    // z2.applyFunction(leakyReluDeriv);
-    // Matrix dL_dz2 = Matrix::elemMult(dL_da2, z2);
-
-    // Matrix dL_da1 = W[1].transpose() * dL_dz2;
-    // Matrix z1 = Matrix(cache[1]);
-    // z1.applyFunction(leakyReluDeriv);
-    // Matrix dL_dz1 = Matrix::elemMult(dL_da1, z1);
-
-
-    // dL_da4.printSize();
-    // z4.printSize();
-
-
-    // Matrix dL_dW4 = z4.transpose() * dL_da4;
-    
-    // dL_dW4.applyFunction(scalarMultiply, alpha);
-
-    // Matrix dL_dW3 = z3.transpose() * dL_da3;
-    // dL_dW3.applyFunction(scalarMultiply, alpha);
-
-    // Matrix dL_dW2 = z2.transpose() * dL_da2;
-    // dL_dW2.applyFunction(scalarMultiply, alpha);
-
-    // Matrix dL_dW1 = z1.transpose() * dL_da1;
-    // dL_dW1.applyFunction(scalarMultiply, alpha);
-
-    // // W[3].printSize();
-    // // dL_dW4.printSize();
-    // W[4] = W[4] - dL_dW4;
-    // W[3] = W[3] - dL_dW3;
-    // W[2] = W[2] - dL_dW2;
-    // W[1] = W[1] - dL_dW1;
-
-
-    return;
-}
-
 std::vector<std::vector<char>> generateTrainingSet(char* dataset, int dataSize, int numExamples) {
     std::vector<std::vector<char>> res = std::vector<std::vector<char>>();
     for (int i = 0; i < numExamples; i++) {
@@ -108,36 +42,49 @@ std::vector<std::vector<char>> generateTrainingSet(char* dataset, int dataSize, 
 int main(int argc, char const *argv[])
 {
 
-    std::vector<std::vector<float>> x1_val = {{1}, {0}}; // 0
+    // std::vector<std::vector<float>> x1_val = {{1}, {0}}; // 0
     
-    std::vector<std::vector<float>> y1_val = {{0}, {1}}; // 1
+    // std::vector<std::vector<float>> y1_val = {{0}, {1}}; // 1
 
-    std::vector<std::vector<float>> x2_val = {{0}, {1}}; // 1
-    std::vector<std::vector<float>> y2_val = {{1}, {0}}; // 0
+    // std::vector<std::vector<float>> x2_val = {{0}, {1}}; // 1
+    // std::vector<std::vector<float>> y2_val = {{1}, {0}}; // 0
 
-    Matrix X1 = Matrix(2,1, x1_val);
-    Matrix X2 = Matrix(2,1, x2_val);
+    // Matrix X1 = Matrix(2,1, x1_val);
+    // Matrix X2 = Matrix(2,1, x2_val);
 
-    // X1.printMatrix();
-    // X2.printMatrix();
 
-    Matrix Y1 = Matrix(2,1, y1_val);
-    Matrix Y2 = Matrix(2,1, y2_val);
-    // Y1.printMatrix();
-    // Y2.printMatrix();
 
-    NeuralNetwork network1(2);
-    network1.addLayer(2, Activation::LeakyRelu);
-    network1.addLayer(2, Activation::Softmax);
+    // Matrix Y1 = Matrix(2,1, y1_val);
+    // Matrix Y2 = Matrix(2,1, y2_val);
 
-    for (int i = 0; i < 1000; i++) {
-        network1.trainingStep(X1, Y1);
-        network1.trainingStep(X2, Y2);
-        if (i % 1 == 0)
-            network1.printAvgCost();
-    }
+    // NeuralNetwork network1(2);
+    // network1.addLayer(2, Activation::LeakyRelu);
+    // network1.addLayer(2, Activation::Softmax);
 
-    return 0;
+    // for (int i = 0; i < 1; i++) {
+    //     network1.trainingStep(X1, X2);
+    //     network1.trainingStep(X2, Y2);
+    //     float c = network1.getAvgCost();
+    //     printf("Cost: %f\n", c);
+    //     // if (i % 2 == 0)
+    //     //     network1.trainingStep(X2, Y2);
+    //     // else 
+    //     //     network1.trainingStep(X1, Y1);
+    //     // if (i % 10 == 0) {
+    //     //     float c = network1.getAvgCost();
+    //     //     printf("Cost: %f\n", c);
+    //     //     if (c < 0.005){
+    //     //         break;
+    //     //     }
+    //     // }
+
+    // }
+    // Matrix Ytest = network1.predict(X2);
+    // Matrix Ytest2 = network1.predict(X1);
+
+    // Ytest.printMatrix();
+    // Ytest2.printMatrix();
+    // return 0;
 
     // READ INPUT FILE
     std::ifstream inputFile("input.txt");
@@ -182,7 +129,11 @@ int main(int argc, char const *argv[])
     // Create Training Set
     int datasetSize = charCount;
     printf("datasetSize: %i\n", datasetSize);
-    std::vector<std::vector<char>> trainingSet = generateTrainingSet(charList, datasetSize, 10000);
+
+    int epochs = 10;
+    int trainingSetSize = 1000;
+
+    std::vector<std::vector<char>> trainingSet = generateTrainingSet(charList, datasetSize, trainingSetSize);
 
     // Print Training Set
     // for (int i = 0; i < trainingSet.size(); i++) {
@@ -192,29 +143,32 @@ int main(int argc, char const *argv[])
     // Create NN
     NeuralNetwork network = NeuralNetwork(alphabetSize);
     network.addLayer(256, Activation::LeakyRelu);
-    network.addLayer(2048, Activation::LeakyRelu);
-    // network.addLayer(2048, Activation::LeakyRelu);
-    // network.addLayer(2048, Activation::LeakyRelu);
+    network.addLayer(256, Activation::LeakyRelu);
+    network.addLayer(256, Activation::LeakyRelu);
+    network.addLayer(256, Activation::LeakyRelu);
+    network.addLayer(256, Activation::LeakyRelu);
+    network.addLayer(256, Activation::LeakyRelu);
     network.addLayer(alphabetSize, Activation::Softmax);
 
     network.printNN();
 
 
     // Training loop
-    for (int i = 0; i < trainingSet.size(); i++) {
-        Matrix X = oneHot(trainingSet[i][0], alphabet);
-        Matrix expected = oneHot(trainingSet[i][1], alphabet);
-        // printf("Run %i\n", i);
-        network.trainingStep(X, expected);
-        if (i % 1000 == 0)
-            network.printAvgCost();
-        // printf("\n");
+    for (int e = 0; e < epochs; e++) {
+        for (int i = 0; i < trainingSet.size(); i++) {
+            Matrix X = oneHot(trainingSet[i][0], alphabet);
+            Matrix expected = oneHot(trainingSet[i][1], alphabet);
+            network.trainingStep(X, expected);
+        }   
+        float cost = network.getAvgCost();
+        printf("Epoch %i, avg cost: %f\n", e, cost);
+        if (isnan(cost)){
+            exit(1);
+        }
+        if (cost < 0.005){
+            break;
+        }
     }
-
-    // Matrix X = oneHot(trainingSet[0][0], alphabet);
-    // Matrix expected = oneHot(trainingSet[0][1], alphabet);
-    // network.trainingStep(X, expected);
-    // Matrix y_hat2 = network.forwardPassGPU(X, expected);
 
 
     // Training loop GPU
@@ -226,23 +180,6 @@ int main(int argc, char const *argv[])
     //     printf("\n");
     // }
     // network.printNN();
-
-    // std::vector<Matrix> cache = {X, z1, z2, z3, z4};
-    // std::vector<Matrix> W = {theta1, theta2, theta3, theta4};
-
-    // backprop(z4, expected, cache, W, 0.01);
-
-    // Matrix abc = Matrix::ones(12, 1);
-
-    // z4.printSize();
-    // expected.printSize();
-
-
-
-    // float result = res.sumVec();
-
-    // printf("SUM: %f\n", result);
-
    
 
     // Cleanup

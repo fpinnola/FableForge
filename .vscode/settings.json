@@ -71,6 +71,8 @@
         "variant": "cpp",
         "__functional_base": "cpp",
         "functional": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "numeric": "cpp",
+        "random": "cpp"
     }
 }

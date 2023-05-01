@@ -6,6 +6,7 @@
 #include <cmath>
 #include <math.h>
 #include <cstring>
+#include <random>
 
 float randomNum(float Min, float Max) {
     return ((float(std::rand()) / float(RAND_MAX)) * (Max - Min)) + Min;
@@ -72,7 +73,21 @@ Matrix Matrix::randN(int rows, int cols) {
     float * data = (float*) malloc(rows * cols * sizeof(float));
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            data[i * cols + j] = randomNum(-0.15, 0.15);
+            data[i * cols + j] = randomNum(-0.3, 0.3);
+        }
+    }
+    Matrix a = Matrix(rows,cols,data);
+    return a;
+}
+
+Matrix Matrix::He(int rows, int cols, std::normal_distribution<float> distribution) {
+    // std::random_device rd;
+    std::mt19937 gen(0);
+    // srand(time(0));
+    float * data = (float*) malloc(rows * cols * sizeof(float));
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            data[i * cols + j] = distribution(gen);
         }
     }
     Matrix a = Matrix(rows,cols,data);
@@ -113,7 +128,7 @@ float Matrix::get(int row, int col) const {
 }
 
 float Matrix::getMax() const {
-    float max = 0.0;
+    float max = get(0,0);
     for (int i  = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             if (get(i, j) > max) {
@@ -124,12 +139,28 @@ float Matrix::getMax() const {
     return max;
 }
 
+float Matrix::getMin() const {
+    float min = get(0,0);
+    for (int i  = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (get(i, j) < min) {
+                min = get(i,j);
+            }
+        }
+    }
+    return min;
+}
+
 float* Matrix::getVals() const {
     return data;
 }
 
 void Matrix::set(int row, int col, float value) {
     if (row < rows && col < cols) {
+        if (value < min) 
+            value = min;
+        if (value > max)
+            value = max;
         data[row * cols + col] = value;
     }
 }
@@ -148,6 +179,11 @@ void Matrix::setCol(int col, Matrix values) {
             data[i * cols + col] = values.get(i, col);
         }
     }
+}
+
+void Matrix::setMinMax(float mn, float mx) {
+    min = mn;
+    max = mx;
 }
 
 void Matrix::prependVec (float value) {
@@ -175,6 +211,9 @@ float Matrix::expSumVec() {
 
     float sum = 0.0;
     for (int i = 0; i < rows; i++) {
+        if (isnan(get(i,0))) {
+            // printf("isnan %i, %f\n", i, get(i,0));
+        }
         sum += std::exp(get(i,0));
     }
 
@@ -193,6 +232,23 @@ float Matrix::sumVec() {
 
     return sum;
 }
+
+void Matrix::normalizeVec() {
+    float max = getMax();
+    float min = getMin();
+
+    float range = std::abs(max - min);
+
+    for (int i  = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            float v = get(i,j);
+            v -= min;
+            v /= range;
+            v *= 2;
+            v -= 1;
+            set(i,j, v);
+        }
+    }}
 
 void Matrix::applyFunction(float func (float a)) {
     for (int i = 0; i < rows; i++) {
