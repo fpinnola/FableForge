@@ -87,7 +87,7 @@ int main(int argc, char const *argv[])
     // return 0;
 
     // READ INPUT FILE
-    std::ifstream inputFile("input.txt");
+    std::ifstream inputFile("processed.txt");
 
     if (!inputFile.is_open()) {
         std::domain_error("Failed ot open the input file");
@@ -130,8 +130,8 @@ int main(int argc, char const *argv[])
     int datasetSize = charCount;
     printf("datasetSize: %i\n", datasetSize);
 
-    int epochs = 10;
-    int trainingSetSize = 1000;
+    int epochs = 50;
+    int trainingSetSize = 5000;
 
     std::vector<std::vector<char>> trainingSet = generateTrainingSet(charList, datasetSize, trainingSetSize);
 
@@ -143,11 +143,10 @@ int main(int argc, char const *argv[])
     // Create NN
     NeuralNetwork network = NeuralNetwork(alphabetSize);
     network.addLayer(256, Activation::LeakyRelu);
+    network.addLayer(512, Activation::LeakyRelu);
+    network.addLayer(1024, Activation::LeakyRelu);
     network.addLayer(256, Activation::LeakyRelu);
-    network.addLayer(256, Activation::LeakyRelu);
-    network.addLayer(256, Activation::LeakyRelu);
-    network.addLayer(256, Activation::LeakyRelu);
-    network.addLayer(256, Activation::LeakyRelu);
+    // network.addLayer(256, Activation::LeakyRelu);
     network.addLayer(alphabetSize, Activation::Softmax);
 
     network.printNN();
@@ -158,7 +157,7 @@ int main(int argc, char const *argv[])
         for (int i = 0; i < trainingSet.size(); i++) {
             Matrix X = oneHot(trainingSet[i][0], alphabet);
             Matrix expected = oneHot(trainingSet[i][1], alphabet);
-            network.trainingStep(X, expected);
+            network.trainingStep(X, expected, 0.001);
         }   
         float cost = network.getAvgCost();
         printf("Epoch %i, avg cost: %f\n", e, cost);

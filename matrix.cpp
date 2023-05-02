@@ -157,10 +157,10 @@ float* Matrix::getVals() const {
 
 void Matrix::set(int row, int col, float value) {
     if (row < rows && col < cols) {
-        if (value < min) 
-            value = min;
-        if (value > max)
-            value = max;
+        // if (value < min) 
+        //     value = min;
+        // if (value > max)
+        //     value = max * 0.8;
         data[row * cols + col] = value;
     }
 }

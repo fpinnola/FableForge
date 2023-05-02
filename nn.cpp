@@ -59,9 +59,9 @@ void NeuralNetwork::addLayer(int numNodes, Activation activation) {
     std::normal_distribution<float> distribution(0.0, stddev);
     W.push_back(Matrix::He(prevSize, numNodes, distribution));
 
-    float bVal  = ((float(std::rand()) / float(RAND_MAX)) * (3.0 - -3.0)) + -3.0;
-    Matrix bias = Matrix::ones(numNodes, 1).scalarMult(bVal);
-    b.push_back(bias);
+    // float bVal  = ((float(std::rand()) / float(RAND_MAX)) * (3.0 - -3.0)) + -3.0;
+    // Matrix bias = Matrix::ones(numNodes, 1).scalarMult(bVal);
+    b.push_back(Matrix::zeros(numNodes, 1));
 
     g.push_back(activation);
     a.push_back(Matrix::ones(numNodes, 1));
@@ -216,15 +216,53 @@ Matrix NeuralNetwork::forwardPassGPU(Matrix X, Matrix Y) {
 
 }
 
-void NeuralNetwork::trainingStepGPU(Matrix X, Matrix Y) {
+void NeuralNetwork::trainingStepGPU(Matrix X, Matrix Y, float lr) {
 
     Matrix y_hat = forwardPassGPU(X, Y);
     Matrix dA = y_hat - Y; // GPU 
 }
 
 
+Matrix clipGradients(Matrix gradients, float threshold) {
+    float grad_norm = 0.0;
 
-void NeuralNetwork::trainingStep(Matrix X, Matrix Y) {
+    for (int i = 0; i < gradients.getRows(); i++) {
+        for (int j = 0; j < gradients.getCols(); j++) {
+            grad_norm += gradients.get(i,j) * gradients.get(i,j);
+        }
+    }
+
+    grad_norm = sqrt(grad_norm);
+    // printf("grad_norm: %f\n", grad_norm);
+
+    if (grad_norm > threshold) {
+        float scale = threshold / grad_norm;
+
+        for (int i = 0; i < gradients.getRows(); i++) {
+            for (int j = 0; j < gradients.getCols(); j++) {
+                gradients.set(i,j, gradients.get(i,j) * scale);
+            }
+        }
+    }
+
+    return gradients;
+
+}
+
+Matrix clipWeights(Matrix weights, float max, float min) {
+    for (int i = 0; i < weights.getRows(); i++) {
+        for (int j = 0; j < weights.getCols(); j++) {
+            if (weights.get(i,j) > max)
+                weights.set(i,j, max);
+            else if (weights.get(i,j) < min)
+                weights.set(i,j,min);
+        }
+    }
+    return weights;
+}
+
+
+void NeuralNetwork::trainingStep(Matrix X, Matrix Y, float lr) {
 
     Matrix y_hat = forwardPass(X, Y);
 
@@ -243,8 +281,6 @@ void NeuralNetwork::trainingStep(Matrix X, Matrix Y) {
         exit(0);
     }
     
-    float lr = 0.001;
-
     for (int i = W.size() - 1; i >= 0; i--) {
         
         std::tuple<Matrix , Matrix, float> res = backprop(i, dA);
@@ -252,7 +288,6 @@ void NeuralNetwork::trainingStep(Matrix X, Matrix Y) {
         Matrix dW = std::get<1>(res);
         float db = std::get<2>(res);
         Matrix db2 = Matrix::ones(b[i].getRows(), 1);
-        db2 = db2.scalarMult(db);
 
         if (isnan((W[i] - (dW.scalarMult(lr))).get(0,0))) {
             printf("W[%i]\n", i);
@@ -266,7 +301,14 @@ void NeuralNetwork::trainingStep(Matrix X, Matrix Y) {
 
             exit(0);
         }
-        W[i] = W[i] - (dW.scalarMult(lr)); // Update Weights
+        dW = clipGradients(dW, 3.0f);
+        if (dW.get(0,0) > 1000) {
+            exit(0);
+        }
+
+        W[i] = W[i] - (dW.scalarMult(lr));
+        // W[i] = W[i] - (dW.scalarMult(lr)); // Update Weights
+        // W[i] = clipWeights(W[i], 6.0, -6.0);
         b[i] = b[i] - (db2.scalarMult(lr)); // Update biases
         
     }
@@ -281,22 +323,26 @@ Matrix NeuralNetwork::forwardPass(Matrix X, Matrix Y) {
     for (int i = 0; i < W.size(); i++) {
         // printf("Forward pass layer %i\n", i+1);
 
-        Matrix a_temp = Matrix::zeros(1,1);
+        Matrix a_prev = Matrix::zeros(1,1);
         if (i == 0) {
-            a_temp = X;
+            a_prev = X;
             updateActivationLayer(i, X);
         } else {
-            a_temp = a[i];
+            a_prev = a[i];
         }
 
-        Matrix z_temp = (W[i].transpose())*a_temp + b[i];
+        Matrix z_temp = (W[i].transpose())*a_prev + b[i];
 
-        if (isnan(z_temp.sumVec())) {
+        if (isnan(z_temp.sumVec()) || isinf(z_temp.sumVec())) {
                 printf("W[i].T\n");
                 W[i].transpose().printMatrix();
 
+                printf("b[i]\n");
+                b[i].printMatrix();
+
                 printf("a[%i]\n", i);
-                a_temp.printMatrix();
+                a_prev.printMatrix();
+                printf("a size %lu\n", a.size());
 
                 z[i].printMatrix();
                 exit(0);
@@ -306,7 +352,18 @@ Matrix NeuralNetwork::forwardPass(Matrix X, Matrix Y) {
 
         if (g[i] == 1) {
             // Leaky Relu
+            Matrix pre_z = Matrix(z_temp);
+
             z_temp.applyFunction(leakyRelu);
+
+            if (isnan(z_temp.sumVec()) || isinf(z_temp.sumVec())) {
+                printf("z_temp: \n");
+                pre_z.printMatrix();
+                z_temp.printMatrix();
+
+                printf("z_temp nan\n");
+                exit(0);
+            }
 
             updateActivationLayer(i+1, z_temp);
 

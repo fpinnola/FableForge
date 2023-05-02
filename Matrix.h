@@ -61,8 +61,8 @@ public:
 private:
     int rows, cols;
     float* data;
-    float min = -6.0;
-    float max = 6.0;
+    float min = -80.0;
+    float max = 80.0;
 };
 
 #endif

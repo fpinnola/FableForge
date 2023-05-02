@@ -39,8 +39,8 @@ public:
     Matrix forwardPass(Matrix X, Matrix Y);
     Matrix predict(Matrix X);
     Matrix forwardPassGPU(Matrix X, Matrix Y);
-    void trainingStep(Matrix X, Matrix Y);
-    void trainingStepGPU(Matrix X, Matrix Y);
+    void trainingStep(Matrix X, Matrix Y, float lr);
+    void trainingStepGPU(Matrix X, Matrix Y, float lr);
 
 
     std::tuple<Matrix, Matrix, float> backprop(int layer, Matrix dA);
