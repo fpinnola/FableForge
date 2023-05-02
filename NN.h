@@ -41,7 +41,10 @@ public:
     Matrix forwardPassGPU(Matrix X, Matrix Y);
     void trainingStep(Matrix X, Matrix Y, float lr);
     void trainingStepGPU(Matrix X, Matrix Y, float lr);
+    void trainingLoopGPU(std::vector<std::vector<char>> trainingSet, int numEpochs, std::map<char, int> alphabet);
 
 
     std::tuple<Matrix, Matrix, float> backprop(int layer, Matrix dA);
+    std::tuple<Matrix, Matrix, float> backpropGPU(int layer, Matrix dA);
+
 };

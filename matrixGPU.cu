@@ -130,8 +130,6 @@ namespace MatrixGPU {
         float *p_d;
 
 
-        printf("p_size: %i\n", p_size);
-
         // Allocate Device memory
         cudaMalloc(&m_d, m_height * m_width * sizeof(float));
         cudaMalloc(&n_d, n_height * n_width * sizeof(float));
@@ -147,8 +145,6 @@ namespace MatrixGPU {
         dim3 blockSize(TILE_WIDTH, TILE_WIDTH, 1);
         dim3 gridSize(gridHeight, gridWidth, 1);
 
-        printf("gridWidth: %i, gridHeight: %i\n", gridWidth, gridHeight);
-
         matMul<<<gridSize, blockSize>>>(m_d, n_d, p_d, m_height, m_width, n_height, n_width, m_height, n_width);
 
         cudaMemcpy(p_h, p_d, p_size * sizeof(float), cudaMemcpyDeviceToHost);
@@ -160,30 +156,30 @@ namespace MatrixGPU {
         return p_h;
     }
 
-    float* matrixTranspose(float* a, int height, int width) {
-        float* b = (float*)malloc(height * width * sizeof(float));
+    // float* matrixTranspose(float* a, int height, int width) {
+    //     float* b = (float*)malloc(height * width * sizeof(float));
 
-        float* a_d;
-        float* b_d;
+    //     float* a_d;
+    //     float* b_d;
 
-        cudaMalloc(&a_d, a);
-        cudaMalloc(&b_d, b);
+    //     cudaMalloc(&a_d, a);
+    //     cudaMalloc(&b_d, b);
 
-        cudaMemcpy(a_d, a, height * width * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(b_d, b, height * width * sizeof(float), cudaMemcpyHostToDevice);
+    //     cudaMemcpy(a_d, a, height * width * sizeof(float), cudaMemcpyHostToDevice);
+    //     cudaMemcpy(b_d, b, height * width * sizeof(float), cudaMemcpyHostToDevice);
 
 
-        dim3 blockSize(32,32,1);
-        dim3 gridSize(ceil(width / 32.0), ceil(height / 32.0), 1);
+    //     dim3 blockSize(32,32,1);
+    //     dim3 gridSize(ceil(width / 32.0), ceil(height / 32.0), 1);
 
-        matrixTranspose<<<gridSize, blockSize>>>(a_d, b_d, height, width);
+    //     matrixTranspose<<<gridSize, blockSize>>>(a_d, b_d, height, width);
 
-        cudaMemcpy(b, b_d, height * width * sizeof(float), cudaMemcpyDeviceToHost);
+    //     cudaMemcpy(b, b_d, height * width * sizeof(float), cudaMemcpyDeviceToHost);
 
-        cudaFree(b_d);
-        cudaFree(a_d);
+    //     cudaFree(b_d);
+    //     cudaFree(a_d);
 
-        return b;
-    }
+    //     return b;
+    // }
 }
 

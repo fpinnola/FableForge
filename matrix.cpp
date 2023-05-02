@@ -21,7 +21,14 @@ Matrix::Matrix (int rows, int cols) : rows(rows), cols(cols) {
     }
 }
 
-Matrix::Matrix(int rows, int cols, float* data) : rows(rows), cols(cols), data(data) {}
+Matrix::Matrix(int rows, int cols, float* inData) : rows(rows), cols(cols) {
+    data = (float*)malloc(rows * cols * sizeof(float));
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            data[i * cols + j] = inData[i * cols + j];
+        }
+    }
+}
 
 Matrix::Matrix (int rows, int cols, std::vector<std::vector<float>> v) : rows(rows), cols(cols) {
     data = (float*) malloc(rows * cols * sizeof(float));
@@ -211,7 +218,7 @@ float Matrix::expSumVec() {
 
     float sum = 0.0;
     for (int i = 0; i < rows; i++) {
-        if (isnan(get(i,0))) {
+        if (std::isnan(get(i,0))) {
             // printf("isnan %i, %f\n", i, get(i,0));
         }
         sum += std::exp(get(i,0));

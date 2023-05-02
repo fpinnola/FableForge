@@ -9,7 +9,7 @@ class Matrix {
 public:
     // Constructor
     Matrix (int rows, int cols);
-    Matrix(int rows, int cols, float* data);
+    Matrix(int rows, int cols, float* inData);
     Matrix (int rows, int cols, std::vector<std::vector<float>> v);
     Matrix (const Matrix& other);
 
