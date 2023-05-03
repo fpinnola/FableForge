@@ -630,7 +630,6 @@ std::tuple<Matrix, Matrix, float> NeuralNetwork::backpropGPU(int layer, Matrix d
 }
 
 void NeuralNetwork::trainingLoopGPU(std::vector<std::vector<char>> trainingSet, int numEpochs, std::map<char, int> alphabet) {
-
     for (int e = 0; e < numEpochs; e++) {
         time_t start = time(0);
         // Store W, b, a, z on GPU
@@ -638,8 +637,6 @@ void NeuralNetwork::trainingLoopGPU(std::vector<std::vector<char>> trainingSet, 
         Matrix X_placeholder = Matrix::zeros(alphabet.size(), 1);
         float* X_d = MatrixGPU::storeOnDevice(X_placeholder.getVals(), X_placeholder.getRows());
         a[0].setDeviceData(X_d);
-
-        printf("Storing values on device\n");
 
         for (int w = 0; w < W.size(); w++) {
             // Store Weights for layer on device
@@ -656,23 +653,34 @@ void NeuralNetwork::trainingLoopGPU(std::vector<std::vector<char>> trainingSet, 
             z[w].setDeviceData(z_d);
             float* a_d = MatrixGPU::storeOnDevice(Matrix::zeros(W[w].getCols(), 1).getVals(), W[w].getCols());
             a[w+1].setDeviceData(a_d);
-            std::cout << "Set a[" << w+1 << "]: " << a[w+1].getDeviceData() << std::endl;
         }
 
 
         // How do we handle a, a??
 
-        for (int i = 0; i < trainingSet.size(); i++) {
-            Matrix X = oneHot(trainingSet[i][0], alphabet);
-            Matrix expected = oneHot(trainingSet[i][1], alphabet);
-            std::cout << "W[0] device data: " << W[0].getDeviceData() << std::endl;
+        float costSum = 0.0;
 
-            MatrixGPU::forwardPass(W, b, z, a, X.getVals(), expected.getVals(), X.getRows(), expected.getRows());
+        for (int i = 0; i < trainingSet.size(); i++) {
+            // printf("Training item %i\n", i);
+            Matrix X = oneHot(trainingSet[i][0], alphabet);
+            Matrix Y = oneHot(trainingSet[i][1], alphabet);
+
+            Matrix y_hat = MatrixGPU::forwardPass(W, b, z, a, X.getVals(), Y.getVals(), X.getRows(), Y.getRows());
+
+            costSum = cost(y_hat, Y) + costSum;
+            // y_hat.printMatrix();
+            // Get cost
+            Matrix dA = y_hat - Y;
+
+
+
             // trainingStepGPU(X, expected, 0.001);
         }   
         // Clear W, b, a, z on GPU
+        // printf("Epoch %i, avg cost: %f | time elapsed: %fs\n", e, cost, seconds_since_start);
 
-        printf("Removing values on device\n");
+        // printf("Cost avg: %f\n", costSum / trainingSet.size());
+
         float * a_h_final = MatrixGPU::removeFromDevice(a[a.size() - 1].getDeviceData(), W[W.size() - 1].getCols());
 
         for (int w = 0; w < W.size(); w++) {
@@ -693,15 +701,13 @@ void NeuralNetwork::trainingLoopGPU(std::vector<std::vector<char>> trainingSet, 
         }
 
         double seconds_since_start = difftime( time(0), start);
-        // float cost = getAvgCost();
-        float cost = 0.0;
-        printf("Epoch %i, avg cost: %f | time elapsed: %fs\n", e, cost, seconds_since_start);
-        if (std::isnan(cost)){
-            exit(1);
-        }
-        if (cost < 0.005){
-            break;
-        }
+        printf("Epoch %i, avg cost: %f | time elapsed: %fs\n", e, costSum / trainingSet.size(), seconds_since_start);
+        // if (std::isnan(cost)){
+        //     exit(1);
+        // }
+        // if (cost < 0.005){
+        //     break;
+        // }
     }
     return;
 }

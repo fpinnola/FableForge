@@ -339,8 +339,8 @@ namespace MatrixGPU {
         return a_h;
     }
 
-    void forwardPass(std::vector<Matrix> W_d, std::vector<Matrix> b_d, std::vector<Matrix>z_d, std::vector<Matrix>a_d, float* X, float* Y, int inputSize, int outputSize) {
-        printf("Starting forward pass!\n");
+    Matrix forwardPass(std::vector<Matrix> W_d, std::vector<Matrix> b_d, std::vector<Matrix>z_d, std::vector<Matrix>a_d, float* X, float* Y, int inputSize, int outputSize) {
+        // printf("Starting forward pass!\n");
 
         for (int i = 0; i < W_d.size(); i++) {
             // float* a_prev_d;
@@ -401,9 +401,9 @@ namespace MatrixGPU {
             // EXECUTE kernel, copy result to z_d[i].getDeviceData()
             dim3 blockSize(TILE_WIDTH, TILE_WIDTH, 1);
             dim3 gridSize(ceil(a_d[i].getCols() / 32.0), ceil(W_d[i].getCols() / 32.0));
-            printf("gridSize: (%i, %i, %i)\n", gridSize.x, gridSize.y, gridSize.z);
+            // printf("gridSize: (%i, %i, %i)\n", gridSize.x, gridSize.y, gridSize.z);
             matMul<<<gridSize, blockSize>>>(W_i_t_d, a_d[i].getDeviceData(), z_d[i].getDeviceData(), W_d[i].getCols(), W_d[i].getRows(), a_d[i].getRows(), a_d[i].getCols(), W_d[i].getCols(), a_d[i].getCols());
-            printf("Output shape: (%i, %i)\n", W_d[i].getCols(), a_d[i].getCols());
+            // printf("Output shape: (%i, %i)\n", W_d[i].getCols(), a_d[i].getCols());
             CUDA_CALL(cudaDeviceSynchronize());
 
             // float* z_d_temp = (float*)malloc(z_d[i].getRows() * sizeof(float));
@@ -422,13 +422,13 @@ namespace MatrixGPU {
             CUDA_CALL(cudaDeviceSynchronize());
 
 
-            // // PRINT z_d[i]
-            float* z_d_temp = (float*)malloc(z_d[i].getRows() * sizeof(float));
-            cudaMemcpy(z_d_temp, z_d[i].getDeviceData(), z_d[i].getRows() * sizeof(float), cudaMemcpyDeviceToHost);
-            Matrix z_d_temp_mat = Matrix(z_d[i].getRows(), 1, z_d_temp);
-            printf("z_d[%i]\n", i);
-            z_d_temp_mat.printMatrix();
-            free(z_d_temp);
+            // // // PRINT z_d[i]
+            // float* z_d_temp = (float*)malloc(z_d[i].getRows() * sizeof(float));
+            // cudaMemcpy(z_d_temp, z_d[i].getDeviceData(), z_d[i].getRows() * sizeof(float), cudaMemcpyDeviceToHost);
+            // Matrix z_d_temp_mat = Matrix(z_d[i].getRows(), 1, z_d_temp);
+            // printf("z_d[%i]\n", i);
+            // z_d_temp_mat.printMatrix();
+            // free(z_d_temp);
 
             // COMPUTE ACTIVATION FUNCTION
 
@@ -448,7 +448,7 @@ namespace MatrixGPU {
 
                 z_h_temp_mat.applyFunction(leakyRelu2);
 
-                z_h_temp_mat.printMatrix();
+                // z_h_temp_mat.printMatrix();
 
                 CUDA_CALL(cudaMemcpy(a_d[i+1].getDeviceData(), z_h_temp_mat.getVals(), a_d[i+1].getRows() * sizeof(float), cudaMemcpyHostToDevice));
 
@@ -471,17 +471,17 @@ namespace MatrixGPU {
 
                 // Normalize vector
                 z_h_temp_mat.normalizeVec();
-                printf("z_h_temp_mat normalized: \n");
+                // printf("z_h_temp_mat normalized: \n");
                 // z_h_temp_mat.printMatrix();
                 // Get sum
                 float z_sum = z_h_temp_mat.expSumVec();  
 
-                printf("z_sum: %f\n", z_sum);
+                // printf("z_sum: %f\n", z_sum);
 
                 z_h_temp_mat.applyFunction(softmax2, z_sum);
-                z_h_temp_mat.printMatrix();
+                // z_h_temp_mat.printMatrix();
 
-                std::cout << "Copying to a[" << i+1 << "[: " << a_d[i+1].getDeviceData() << std::endl;
+                // std::cout << "Copying to a[" << i+1 << "[: " << a_d[i+1].getDeviceData() << std::endl;
 
                 CUDA_CALL(cudaMemcpy(a_d[i+1].getDeviceData(), z_h_temp_mat.getVals(), a_d[i+1].getRows() * sizeof(float), cudaMemcpyHostToDevice));
 
@@ -505,8 +505,10 @@ namespace MatrixGPU {
         cudaMemcpy(y_hat_val, a_d[a_d.size()-1].getDeviceData(), a_d[a_d.size()-1].getRows() * sizeof(float), cudaMemcpyDeviceToHost);
         Matrix y_hat = Matrix(outputSize, 1, y_hat_val);
 
-        printf("Prediction!\n");
-        y_hat.printMatrix();
+        // printf("Prediction!\n");
+        // y_hat.printMatrix();
+
+        return y_hat;
 
 
     }

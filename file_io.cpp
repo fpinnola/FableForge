@@ -22,6 +22,13 @@ float log2C(float a) noexcept {
     return std::log(a);
 }
 
+Matrix oneHot(char a, std::map<char, int> alphabet); 
+// {
+//     Matrix vector = Matrix::zeros(alphabet.size(), 1);
+//     vector.set(alphabet[a],0,1.0);
+//     return vector;
+// }
+
 std::vector<std::vector<char>> generateTrainingSet(char* dataset, int dataSize, int numExamples) {
     std::vector<std::vector<char>> res = std::vector<std::vector<char>>();
     for (int i = 0; i < numExamples; i++) {
@@ -81,8 +88,8 @@ int main(int argc, char const *argv[])
     int datasetSize = charCount;
     printf("datasetSize: %i\n", datasetSize);
 
-    int epochs = 1;
-    int trainingSetSize = 1;
+    int epochs = 10;
+    int trainingSetSize = 10000;
 
     std::vector<std::vector<char>> trainingSet = generateTrainingSet(charList, datasetSize, trainingSetSize);
 
@@ -105,23 +112,23 @@ int main(int argc, char const *argv[])
 
     // Training loop
     printf("CPU\n");
-    // for (int e = 0; e < epochs; e++) {
-    //     time_t start = time(0);
-    //     for (int i = 0; i < trainingSet.size(); i++) {
-    //         Matrix X = oneHot(trainingSet[i][0], alphabet);
-    //         Matrix expected = oneHot(trainingSet[i][1], alphabet);
-    //         network.trainingStep(X, expected, 0.001);
-    //     }   
-    //     double seconds_since_start = difftime( time(0), start);
-    //     float cost = network.getAvgCost();
-    //     printf("Epoch %i, avg cost: %f | time elapsed: %fs\n", e, cost, seconds_since_start);
-    //     if (std::isnan(cost)){
-    //         exit(1);
-    //     }
-    //     if (cost < 0.005){
-    //         break;
-    //     }
-    // }
+    for (int e = 0; e < epochs; e++) {
+        time_t start = time(0);
+        for (int i = 0; i < trainingSet.size(); i++) {
+            Matrix X = oneHot(trainingSet[i][0], alphabet);
+            Matrix expected = oneHot(trainingSet[i][1], alphabet);
+            network.forwardPass(X, expected);
+        }   
+        double seconds_since_start = difftime( time(0), start);
+        float cost = network.getAvgCost();
+        printf("Epoch %i, avg cost: %f | time elapsed: %fs\n", e, cost, seconds_since_start);
+        // if (std::isnan(cost)){
+        //     exit(1);
+        // }
+        // if (cost < 0.005){
+        //     break;
+        // }
+    }
 
     printf("GPU\n");
     // Training Loop GPU
