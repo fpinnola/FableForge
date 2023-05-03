@@ -28,12 +28,14 @@ public:
     float getMax() const;
     float getMin() const;
     float* getVals() const;
+    float* getDeviceData() const;
 
     // // Setter methods
     void set(int row, int col, float value);
     void setColToVal(int col, float value);
     void setCol(int col, Matrix values);
     void setMinMax(float mn, float mx); // Maximum values of elements in matrix
+    void setDeviceData(float* d);
 
     // // Other methods
     void prependVec (float value);
@@ -61,8 +63,7 @@ public:
 private:
     int rows, cols;
     float* data;
-    float min = -80.0;
-    float max = 80.0;
+    float* device_data;
 };
 
 #endif

@@ -3,6 +3,7 @@
 #include <string>
 #include <random>
 #include <map>
+#include <iostream>
 
 #include "Matrix.h"
 #include "NN.h"
@@ -207,7 +208,7 @@ Matrix NeuralNetwork::forwardPassGPU(Matrix X, Matrix Y) {
 
         //GPU 
         // Matrix z_temp = (W[i].transpose())*a_prev + b[i];
-        Matrix W_t = W[i].transpose(); // GPU transpose
+        Matrix W_t = W[i].transpose(); // GPU transpose (cols, rows) z.dim, a.dim = (w.cols, 1)
         float* W_t2_vals = MatrixGPU::matrixMul(W_t.getVals(), a_prev.getVals(), W_t.getRows(), W_t.getCols(), a_prev.getRows(), a_prev.getCols()); // GPU Multiply
         float* z_temp_vals = MatrixGPU::matrixAdd(W_t2_vals, b[i].getVals(), b[i].getRows() * b[i].getCols()); // GPU Add
         Matrix z_temp = Matrix(b[i].getRows(), 1, z_temp_vals);
@@ -634,29 +635,66 @@ void NeuralNetwork::trainingLoopGPU(std::vector<std::vector<char>> trainingSet, 
         time_t start = time(0);
         // Store W, b, a, z on GPU
 
-        std::vector<float*> W_device = std::vector<float*>();
-        std::vector<float> b_device = std::vector<float>();
+        Matrix X_placeholder = Matrix::zeros(alphabet.size(), 1);
+        float* X_d = MatrixGPU::storeOnDevice(X_placeholder.getVals(), X_placeholder.getRows());
+        a[0].setDeviceData(X_d);
+
+        printf("Storing values on device\n");
 
         for (int w = 0; w < W.size(); w++) {
             // Store Weights for layer on device
+            float* w_d = MatrixGPU::storeOnDevice(W[w].getVals(), W[w].getCols() * W[w].getRows());
+            W[w].setDeviceData(w_d);
 
             // Store bias term for layer on device
+            float* b_d = MatrixGPU::storeOnDevice(b[w].getVals(), b[w].getCols() * b[w].getRows());
+            b[w].setDeviceData(b_d);
 
-
+            // Store placeholder for z, a
+            Matrix z_d_mat = Matrix::zeros(W[w].getCols(), 1);
+            float* z_d = MatrixGPU::storeOnDevice(z_d_mat.getVals(), W[w].getCols());
+            z[w].setDeviceData(z_d);
+            float* a_d = MatrixGPU::storeOnDevice(Matrix::zeros(W[w].getCols(), 1).getVals(), W[w].getCols());
+            a[w+1].setDeviceData(a_d);
+            std::cout << "Set a[" << w+1 << "]: " << a[w+1].getDeviceData() << std::endl;
         }
 
+
         // How do we handle a, a??
-
-
 
         for (int i = 0; i < trainingSet.size(); i++) {
             Matrix X = oneHot(trainingSet[i][0], alphabet);
             Matrix expected = oneHot(trainingSet[i][1], alphabet);
-            trainingStepGPU(X, expected, 0.001);
+            std::cout << "W[0] device data: " << W[0].getDeviceData() << std::endl;
+
+            MatrixGPU::forwardPass(W, b, z, a, X.getVals(), expected.getVals(), X.getRows(), expected.getRows());
+            // trainingStepGPU(X, expected, 0.001);
         }   
         // Clear W, b, a, z on GPU
+
+        printf("Removing values on device\n");
+        float * a_h_final = MatrixGPU::removeFromDevice(a[a.size() - 1].getDeviceData(), W[W.size() - 1].getCols());
+
+        for (int w = 0; w < W.size(); w++) {
+            // Store Weights for layer on device
+
+            int outputSize = W[w].getCols();
+            float* w_h = MatrixGPU::removeFromDevice(W[w].getDeviceData(), W[w].getCols() * W[w].getRows());
+            W[w] = Matrix(W[w].getRows(), W[w].getCols(), w_h);
+
+            // Store bias term for layer on device
+            float* b_h = MatrixGPU::removeFromDevice(b[w].getDeviceData(), b[w].getCols() * b[w].getRows());
+            b[w] = Matrix(b[w].getRows(), b[w].getCols(), b_h);
+
+
+            // Clear z from device
+            float* z_h = MatrixGPU::removeFromDevice(z[w].getDeviceData(), outputSize);
+            float* a_h = MatrixGPU::removeFromDevice(a[w].getDeviceData(), outputSize);
+        }
+
         double seconds_since_start = difftime( time(0), start);
-        float cost = getAvgCost();
+        // float cost = getAvgCost();
+        float cost = 0.0;
         printf("Epoch %i, avg cost: %f | time elapsed: %fs\n", e, cost, seconds_since_start);
         if (std::isnan(cost)){
             exit(1);

@@ -82,7 +82,7 @@ int main(int argc, char const *argv[])
     printf("datasetSize: %i\n", datasetSize);
 
     int epochs = 1;
-    int trainingSetSize = 5000;
+    int trainingSetSize = 1;
 
     std::vector<std::vector<char>> trainingSet = generateTrainingSet(charList, datasetSize, trainingSetSize);
 

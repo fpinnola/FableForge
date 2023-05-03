@@ -7,6 +7,7 @@
 #include <math.h>
 #include <cstring>
 #include <random>
+#include <iostream>
 
 float randomNum(float Min, float Max) {
     return ((float(std::rand()) / float(RAND_MAX)) * (Max - Min)) + Min;
@@ -50,6 +51,7 @@ Matrix::Matrix (const Matrix& other) {
         // data = other.data;
         rows = other.rows;
         cols = other.cols;
+        device_data = other.device_data;
     }
 }
 
@@ -162,6 +164,14 @@ float* Matrix::getVals() const {
     return data;
 }
 
+float* Matrix::getDeviceData() const {
+    // std::cout << "device_data: " << device_data << std::endl;
+    // std::cout << "*device_data: " << *device_data << std::endl;
+    // std::cout << "&device_data: " << &device_data << std::endl;
+
+    return device_data;
+}
+
 void Matrix::set(int row, int col, float value) {
     if (row < rows && col < cols) {
         // if (value < min) 
@@ -192,6 +202,11 @@ void Matrix::setMinMax(float mn, float mx) {
     min = mn;
     max = mx;
 }
+
+void Matrix::setDeviceData(float* d) {
+    device_data = d;
+}
+
 
 void Matrix::prependVec (float value) {
     if (cols != 1) {
@@ -336,6 +351,7 @@ Matrix& Matrix::operator=(const Matrix& other) {
     rows = other.rows;
     cols = other.cols;
     data = (float*) malloc(rows * cols * sizeof(float));
+    device_data = other.device_data;
     memcpy(data, other.data, rows * cols * sizeof(float));
 
     return *this;
