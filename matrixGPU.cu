@@ -513,6 +513,83 @@ namespace MatrixGPU {
 
     }
 
+    // Matrix forwardPass(std::vector<Matrix> W_d, std::vector<Matrix> b_d, std::vector<Matrix>z_d, std::vector<Matrix>a_d, float* X, float* Y, int inputSize, int outputSize) {
+    //     // printf("Starting forward pass!\n");
+
+    //     for (int i = 0; i < W_d.size(); i++) {
+    //         // float* a_prev_d;
+    //         if (i == 0) {
+    //             // cudaMalloc(&a_prev_d, inputSize * sizeof(float));
+    //             cudaMemcpy(a_d[i].getDeviceData(), X, inputSize * sizeof(float), cudaMemcpyHostToDevice);
+    //         } 
+            
+    //         // Matrix z_temp = (W[i].transpose())*a_prev + b[i];
+    //         // transpose matrix W[i] in float* W_i_t
+    //         float* W_i_t_d;
+    //         cudaMalloc(&W_i_t_d, W_d[i].getRows() * W_d[i].getCols() * sizeof(float));
+    //         dim3 grid(ceil(W_d[i].getCols() / TRANSPOSE_BLOCK_DIM), ceil(W_d[i].getRows() / TRANSPOSE_BLOCK_DIM), 1);
+    //         dim3 threads(TRANSPOSE_BLOCK_DIM, TRANSPOSE_BLOCK_DIM, 1);
+    //         transpose<<<grid, threads>>>(W_i_t_d, W_d[i].getDeviceData(), W_d[i].getCols(), W_d[i].getRows());
+    //         CUDA_CALL(cudaDeviceSynchronize());
+
+    //         // z_inter = W_i_t_d * a_prev
+    //         // EXECUTE kernel, copy result to z_d[i].getDeviceData()
+    //         dim3 blockSize(TILE_WIDTH, TILE_WIDTH, 1);
+    //         dim3 gridSize(ceil(a_d[i].getCols() / 32.0), ceil(W_d[i].getCols() / 32.0));
+    //         matMul<<<gridSize, blockSize>>>(W_i_t_d, a_d[i].getDeviceData(), z_d[i].getDeviceData(), W_d[i].getCols(), W_d[i].getRows(), a_d[i].getRows(), a_d[i].getCols(), W_d[i].getCols(), a_d[i].getCols());
+    //         CUDA_CALL(cudaDeviceSynchronize());
+
+
+    //         cudaFree(W_i_t_d);
+
+
+    //         // reset z_inter + b[i]
+    //         // EXECUTE kernel, copy result to z_d[i].getDeviceData()
+    //         add<<<ceil(z_d[i].getRows() / 1024.0) , 1024>>>(z_d[i].getDeviceData(), b_d[i].getDeviceData(), z_d[i].getRows());
+    //         CUDA_CALL(cudaDeviceSynchronize());
+
+    //         // Compute Activation
+    //         if (i < W_d.size() - 1) {
+    //             // LEAKY RELU
+    //             float* z_h_temp = (float*)malloc(z_d[i].getRows() * sizeof(float));
+    //             CUDA_CALL(cudaMemcpy(z_h_temp, z_d[i].getDeviceData(), z_d[i].getRows() * sizeof(float), cudaMemcpyDeviceToHost));
+    //             Matrix z_h_temp_mat = Matrix(z_d[i].getRows(), 1, z_h_temp);
+
+    //             z_h_temp_mat.applyFunction(leakyRelu2);
+
+    //             CUDA_CALL(cudaMemcpy(a_d[i+1].getDeviceData(), z_h_temp_mat.getVals(), a_d[i+1].getRows() * sizeof(float), cudaMemcpyHostToDevice));
+
+    //         } else {
+    //             // SOFTMAX OUTPUT
+
+    //             float* z_h_temp = (float*)malloc(z_d[i].getRows() * sizeof(float));
+    //             CUDA_CALL(cudaMemcpy(z_h_temp, z_d[i].getDeviceData(), z_d[i].getRows() * sizeof(float), cudaMemcpyDeviceToHost));
+    //             Matrix z_h_temp_mat = Matrix(z_d[i].getRows(), 1, z_h_temp);
+
+    //             // Normalize vector
+    //             z_h_temp_mat.normalizeVec();
+
+    //             float z_sum = z_h_temp_mat.expSumVec();  
+
+
+    //             z_h_temp_mat.applyFunction(softmax2, z_sum);
+
+    //             CUDA_CALL(cudaMemcpy(a_d[i+1].getDeviceData(), z_h_temp_mat.getVals(), a_d[i+1].getRows() * sizeof(float), cudaMemcpyHostToDevice));
+
+    //         }
+
+    //     }
+
+    //     float* y_hat_val = (float*)malloc(outputSize * sizeof(float));
+    //     cudaMemcpy(y_hat_val, a_d[a_d.size()-1].getDeviceData(), a_d[a_d.size()-1].getRows() * sizeof(float), cudaMemcpyDeviceToHost);
+    //     Matrix y_hat = Matrix(outputSize, 1, y_hat_val);
+
+
+    //     return y_hat;
+
+
+    // }
+
     // float* matrixTranspose(float* a, int height, int width) {
     //     float* b = (float*)malloc(height * width * sizeof(float));
 

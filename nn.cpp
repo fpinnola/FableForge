@@ -151,41 +151,48 @@ float NeuralNetwork::getAvgCost() {
 }
 
 Matrix NeuralNetwork::predict(Matrix X) {
+    // X.printMatrix();
+    // printf("\n");
+
+    Matrix y_hat = Matrix::zeros(1,1);
 
     for (int i = 0; i < W.size(); i++) {
-        // printf("Forward pass layer %i\n", i+1);
-
-        Matrix a_temp = Matrix::zeros(1,1);
+        Matrix a_prev = Matrix::zeros(1,1);
         if (i == 0) {
-            a_temp = X;
+            a_prev = X;
+            updateActivationLayer(i, X);
         } else {
-            a_temp = a[i];
+            a_prev = a[i];
         }
 
-        Matrix z_temp = (W[i].transpose())*a_temp + b[i];
+        Matrix z_temp = (W[i].transpose())*a_prev + b[i];
+
         updateLayerOutput(i, z_temp);
 
         if (g[i] == 1) {
             // Leaky Relu
+            Matrix pre_z = Matrix(z_temp);
+
             z_temp.applyFunction(leakyRelu);
 
-            updateActivationLayer(i+1, z_temp); // CHECK
+            updateActivationLayer(i+1, z_temp);
 
         } else if (g[i] == 2) {
             // Softmax
 
+            Matrix pre_z = Matrix(z_temp);
 
-            // Subtract max to normalize, prevent NaN during exp of sum
-            z_temp.normalizeVec();
+            z_temp.normalizeVec(); // Normalize to prevent inf exp sum
             float z_sum = z_temp.expSumVec();
+            
             z_temp.applyFunction(softmax, z_sum);
 
-            updateActivationLayer(i+1, z_temp); // CHECK
+            y_hat = z_temp;
+
+            updateActivationLayer(i+1, z_temp);
+
         }
     }
-
-
-    Matrix y_hat = a[a.size() - 1];
 
     return y_hat;
 }
