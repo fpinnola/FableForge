@@ -77,10 +77,24 @@ char oneHotToChar(Matrix a, std::map<char, int> alphabet) {
     return foundKey;
 }
 
-std::vector<std::vector<char>> generateTrainingSet(char* dataset, int dataSize, int numExamples) {
+std::vector<std::tuple<char*, char>> generateTrainingSet2(char* dataset, int dataSize, int numExamples, int contextSize) {
+    std::vector<std::tuple<char*, char>> res = std::vector<std::tuple<char*, char>>();
+    for (int i = 0; i < numExamples; i++) {
+        int start = std::rand()%(dataSize-contextSize + 1);
+        char* x = new char[contextSize];
+        for (int j = 0; j < contextSize; j++) {
+            x[j] = *(dataset + start + j);
+        }
+        char y = *(dataset + start + contextSize);
+        res.push_back(std::tuple<char*, char>(x, y));
+    }
+    return res;
+}
+
+std::vector<std::vector<char>> generateTrainingSet(char* dataset, int dataSize, int numExamples, int contextSize) {
     std::vector<std::vector<char>> res = std::vector<std::vector<char>>();
     for (int i = 0; i < numExamples; i++) {
-        int start = std::rand()%(dataSize-0 + 1);
+        int start = std::rand()%(dataSize-contextSize + 1);
         std::vector<char> vals = std::vector<char>();
         vals.push_back(*(dataset + start));
         vals.push_back(*(dataset + start + 1));
@@ -136,13 +150,15 @@ int main(int argc, char const *argv[])
     int datasetSize = charCount;
     printf("datasetSize: %i\n", datasetSize);
 
-    int epochs = 20;
-    int trainingSetSize = 10000;
+    int epochs = 10;
+    int trainingSetSize = 250000;
+    int context = 1;
 
     printf("training set size: %i\n",trainingSetSize);
     printf("num epochs: %i\n", epochs);
 
-    std::vector<std::vector<char>> trainingSet = generateTrainingSet(charList, datasetSize, trainingSetSize);
+    std::vector<std::vector<char>> trainingSet = generateTrainingSet(charList, datasetSize, trainingSetSize, context);
+    std::vector<std::tuple<char*, char>> trainingSet2 = generateTrainingSet2(charList, datasetSize, trainingSetSize, context);
 
     // Print Training Set
     // for (int i = 0; i < trainingSet.size(); i++) {
@@ -154,8 +170,8 @@ int main(int argc, char const *argv[])
     network.addLayer(256, Activation::LeakyRelu);
     network.addLayer(512, Activation::LeakyRelu);
     // network.addLayer(1024, Activation::LeakyRelu);
-    // network.addLayer(256, Activation::LeakyRelu);
-    // network.addLayer(256, Activation::LeakyRelu);
+    network.addLayer(256, Activation::LeakyRelu);
+    network.addLayer(256, Activation::LeakyRelu);
     network.addLayer(alphabetSize, Activation::Softmax);
 
     network.printNN();
@@ -190,26 +206,20 @@ int main(int argc, char const *argv[])
     // }
 
     printf("GPU\n");
-    for (int e = 0; e < epochs; e++) {
-        time_t start = time(0);
-        for (int i = 0; i < trainingSet.size(); i++) {
-            Matrix X = oneHot(trainingSet[i][0], alphabet);
-            Matrix expected = oneHot(trainingSet[i][1], alphabet);
-            network2.trainingStepGPU(X, expected, 0.001);
-        }   
-        double seconds_since_start = difftime( time(0), start);
-        float cost = network2.getAvgCost();
-        printf("Epoch %i, avg cost: %f | time elapsed: %fs\n", e, cost, seconds_since_start);
-        // if (std::isnan(cost)){
-        //     exit(1);
-        // }
-        // if (cost < 0.005){
-        //     break;
-        // }
-    }
+    // for (int e = 0; e < epochs; e++) {
+    //     time_t start = time(0);
+    //     for (int i = 0; i < trainingSet.size(); i++) {
+    //         Matrix X = oneHot(trainingSet[i][0], alphabet);
+    //         Matrix expected = oneHot(trainingSet[i][1], alphabet);
+    //         network2.trainingStepGPU(X, expected, 0.001);
+    //     }   
+    //     double seconds_since_start = difftime( time(0), start);
+    //     float cost = network2.getAvgCost();
+    //     printf("Epoch %i, avg cost: %f | time elapsed: %fs\n", e, cost, seconds_since_start);
+    // }
 
     // Training Loop GPU
-    // network.trainingLoopGPU(trainingSet, epochs, alphabet);
+    network.trainingLoopGPU(trainingSet, epochs, alphabet);
 
     int numOutputTokens = 80;
     char inputToken = 'a';

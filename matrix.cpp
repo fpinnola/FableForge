@@ -198,10 +198,10 @@ void Matrix::setCol(int col, Matrix values) {
     }
 }
 
-void Matrix::setMinMax(float mn, float mx) {
-    min = mn;
-    max = mx;
-}
+// void Matrix::setMinMax(float mn, float mx) {
+//     min = mn;
+//     max = mx;
+// }
 
 void Matrix::setDeviceData(float* d) {
     device_data = d;

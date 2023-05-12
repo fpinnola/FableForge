@@ -16,6 +16,8 @@ private:
     std::vector<Matrix> a;
     std::vector<Matrix> z;
     std::vector<float> costHistory;
+    std::vector<Matrix> dW_h;
+    std::vector<Matrix> db_h;
     int inputSize;
 
 public:

@@ -92,14 +92,15 @@ void NeuralNetwork::addLayer(int numNodes, Activation activation) {
     float stddev = sqrt(2.0 / prevSize);
     std::normal_distribution<float> distribution(0.0, stddev);
     W.push_back(Matrix::He(prevSize, numNodes, distribution));
-
+    dW_h.push_back(Matrix::zeros(prevSize, numNodes));
     // float bVal  = ((float(std::rand()) / float(RAND_MAX)) * (3.0 - -3.0)) + -3.0;
     // Matrix bias = Matrix::ones(numNodes, 1).scalarMult(bVal);
     b.push_back(Matrix::zeros(numNodes, 1));
-
+    db_h.push_back(Matrix::zeros(numNodes, 1));
     g.push_back(activation);
     a.push_back(Matrix::ones(numNodes, 1));
     z.push_back(Matrix::ones(numNodes, 1));
+
 }
 
 void NeuralNetwork::addLayer(int numNodes, Activation activation, int input) {
@@ -198,13 +199,9 @@ Matrix NeuralNetwork::predict(Matrix X) {
 }
 
 Matrix NeuralNetwork::forwardPassGPU(Matrix X, Matrix Y) {
-    // User Kernel Functions
-
     Matrix y_hat = Matrix::zeros(1,1);
-
     for (int i = 0; i < W.size(); i++) {
         // printf("Forward pass layer %i\n", i+1);
-
         Matrix a_prev = Matrix::zeros(1,1);
         if (i == 0) {
             a_prev = X;
@@ -212,121 +209,29 @@ Matrix NeuralNetwork::forwardPassGPU(Matrix X, Matrix Y) {
         } else {
             a_prev = a[i];
         }
-
         //GPU 
         // Matrix z_temp = (W[i].transpose())*a_prev + b[i];
         Matrix W_t = W[i].transpose(); // GPU transpose (cols, rows) z.dim, a.dim = (w.cols, 1)
         float* W_t2_vals = MatrixGPU::matrixMul(W_t.getVals(), a_prev.getVals(), W_t.getRows(), W_t.getCols(), a_prev.getRows(), a_prev.getCols()); // GPU Multiply
         float* z_temp_vals = MatrixGPU::matrixAdd(W_t2_vals, b[i].getVals(), b[i].getRows() * b[i].getCols()); // GPU Add
         Matrix z_temp = Matrix(b[i].getRows(), 1, z_temp_vals);
-        // END GPU
-
-        // if (std::isnan(z_temp.sumVec()) || std::isinf(z_temp.sumVec())) {
-        //     printf("NaN or inf detected in layer output: %i\n", i);
-        //     W_t.printMatrix();
-
-        //     exit(0);
-        // }   
-
         updateLayerOutput(i, z_temp);
-
         if (g[i] == 1) {
             // Leaky Relu
-
             z_temp.applyFunction(leakyRelu);
-
-            // if (std::isnan(z_temp.sumVec()) || std::isinf(z_temp.sumVec())) {
-            //     printf("NaN or inf detected in activation: %i\n", i);
-            //     exit(0);
-            // }
-
             updateActivationLayer(i+1, z_temp);
-
         } else if (g[i] == 2) {
             // Softmax
-
-            // Matrix pre_z = Matrix(z_temp);
-
             z_temp.normalizeVec(); // Normalize to prevent inf exp sum
             float z_sum = z_temp.expSumVec();
-
             z_temp.applyFunction(softmax, z_sum);
-            // if (std::isnan(z_temp.sumVec())) {
-            //     printf("NaN detected in activation: %i \n", i);
-            //     exit(0);
-            // }
-
             y_hat = z_temp;
-
-
             updateActivationLayer(i+1, z_temp);
-
         }
     }
-
-    // if (std::isnan(y_hat.sumVec())) {
-    //     printf("y_hat\n");
-    //     y_hat.printMatrix();
-    //     exit(0);
-    // }
-
     float pass_cost = cost(y_hat, Y);
     costHistory.push_back(pass_cost);
-
     return y_hat;
-
-    // for (int i = 0; i < W.size(); i++) {    
-    //     // printf("Forward pass layer %i\n", i+1);
-
-    //     Matrix a_temp = Matrix::zeros(1,1);
-    //     if (i == 0) {
-    //         a_temp = X;
-    //     } else {
-    //         a_temp = a[i-1];
-    //     }
-
-    //     // a_temp.printSize();
-    //     // W[i].printSize();
-
-    //     Matrix W_t = W[i].transpose(); // GPU transpose
-
-    //     float* W_t2_vals = MatrixGPU::matrixMul(W_t.getVals(), a_temp.getVals(), W_t.getRows(), W_t.getCols(), a_temp.getRows(), a_temp.getCols()); // GPU Multiply
-
-    //     float* z_temp_vals = MatrixGPU::matrixAdd(W_t2_vals, b[i].getVals(), b[i].getRows() * b[i].getCols()); // GPU Add
-
-    //     Matrix z_temp = Matrix(b[i].getRows(), 1, z_temp_vals);
-
-    //     updateLayerOutput(i, z_temp);
-
-    //     if (g[i] == 1) {
-    //         // Leaky Relu
-    //         z_temp.applyFunction(leakyRelu); // GPU
-    //         updateActivationLayer(i, z_temp);
-    //         // z_temp.printSize();
-
-    //     } else if (g[i] == 2) {
-    //         // Softmax
-    //         Matrix maxVal = Matrix(z_temp.getRows(), 1);
-    //         maxVal.setColToVal(0, z_temp.getMax());
-
-    //         // Subtract max to normalize, prevent NaN during exp of sum
-    //         float* z_temp_vals_2 = MatrixGPU::matrixSubtract(z_temp.getVals(), maxVal.getVals(), z_temp.getRows()); // GPU subtraction
-    //         z_temp = Matrix(z_temp.getRows(), 1, z_temp_vals_2);
-
-    //         float z_sum = z_temp.expSumVec(); // GPU summation
-
-    //         // z_temp.printMatrix();
-    //         z_temp.applyFunction(softmax, z_sum); // GPU
-    //         // z_temp.printSize();
-
-    //         updateActivationLayer(i, z_temp);
-    //     }
-    // }
-
-    // Matrix y_hat = a[a.size() - 1];
-    // float pass_cost = cost(y_hat, Y);
-    // printf("Forward pass complete!\nCost: %f\n", pass_cost);
-
 }
 
 void NeuralNetwork::trainingStepGPU(Matrix X, Matrix Y, float lr) {
@@ -376,52 +281,18 @@ void NeuralNetwork::trainingStepGPU(Matrix X, Matrix Y, float lr) {
 void NeuralNetwork::trainingStep(Matrix X, Matrix Y, float lr) {
 
     Matrix y_hat = forwardPass(X, Y);
-
     Matrix dA = y_hat - Y;
-
-    if (std::isnan(dA.sumVec())) {
-        printf("X\n");
-        X.printMatrix();
-        printf("Y\n");
-        Y.printMatrix();
-        printf("y_hat\n");
-        y_hat.printMatrix();
-        printf("dA\n");
-        dA.printMatrix();
-        printf("dA output nan\n");
-        exit(0);
-    }
     
     for (int i = W.size() - 1; i >= 0; i--) {
-        
         std::tuple<Matrix , Matrix, float> res = backprop(i, dA);
         dA = std::get<0>(res);
         Matrix dW = std::get<1>(res);
         float db = std::get<2>(res);
         Matrix db2 = Matrix::ones(b[i].getRows(), 1);
-
-        if (std::isnan((W[i] - (dW.scalarMult(lr))).get(0,0))) {
-            printf("W[%i]\n", i);
-            W[i].printMatrix();
-
-            printf("dW\n");
-            dW.printMatrix();
-
-            printf("dW.scalarMult(0.01)\n");
-            dW.scalarMult(lr).printMatrix();
-
-            exit(0);
-        }
         dW = clipGradients(dW, 3.0f);
-        if (dW.get(0,0) > 1000) {
-            exit(0);
-        }
-
         W[i] = W[i] - (dW.scalarMult(lr));
         b[i] = b[i] - (db2.scalarMult(lr)); // Update biases
-        
     }
-
     return;
 }
 
@@ -517,6 +388,60 @@ Matrix NeuralNetwork::forwardPass(Matrix X, Matrix Y) {
 
     return y_hat;
 }
+
+// Matrix NeuralNetwork::forwardPass(Matrix X, Matrix Y) {
+//     Matrix y_hat = Matrix::zeros(1,1);
+//     for (int i = 0; i < W.size(); i++) {
+//         Matrix a_prev = Matrix::zeros(1,1);
+//         if (i == 0) {
+//             a_prev = X;
+//             updateActivationLayer(i, X);
+//         } else {
+//             a_prev = a[i];
+//         }
+//         Matrix z_temp = (W[i].transpose())*a_prev + b[i];
+//         updateLayerOutput(i, z_temp);
+//         if (g[i] == 1) {
+//             // Leaky Relu
+//             Matrix pre_z = Matrix(z_temp);
+//             z_temp.applyFunction(leakyRelu);
+//             updateActivationLayer(i+1, z_temp);
+//         } else if (g[i] == 2) {
+//             // Softmax
+//             z_temp.normalizeVec(); // Normalize to prevent inf exp sum
+//             float z_sum = z_temp.expSumVec();
+//             z_temp.applyFunction(softmax, z_sum);
+//             y_hat = z_temp;
+//             updateActivationLayer(i+1, z_temp);
+//         }
+//     }
+//     float pass_cost = cost(y_hat, Y);
+//     costHistory.push_back(pass_cost);
+//     return y_hat;
+// }
+
+
+// std::tuple<Matrix, Matrix, float> NeuralNetwork::backprop(int layer, Matrix dA) {
+//     Matrix z_layer = z[layer];
+//     if (g[layer] == Activation::LeakyRelu) {
+//         z_layer.applyFunction(leakyReluDeriv);
+//     }
+//     Matrix dZ = Matrix::elemMult(dA, z[layer]);
+//     if (layer == z.size() - 1) {
+//         dZ = dA;
+//     }
+//     // a[l-1].T
+//     Matrix a_layer_1t = a[layer].transpose();
+//     // dW[l]
+//     Matrix dW_l = dZ*a_layer_1t;
+//     // db[l] = sum(dZ[l])
+//     float db_l = dZ.sumVec();
+//     // dA[l-1] = w[l].T * dZ[l]
+//     Matrix dA_l1 = W[layer]*dZ;
+//     //  Output dA[l-1], dW[l], db[l]
+//     return std::tuple<Matrix, Matrix, float>(dA_l1, dW_l.transpose(), db_l);
+// }
+
 
 std::tuple<Matrix, Matrix, float> NeuralNetwork::backprop(int layer, Matrix dA) {
 
@@ -650,9 +575,15 @@ void NeuralNetwork::trainingLoopGPU(std::vector<std::vector<char>> trainingSet, 
             float* w_d = MatrixGPU::storeOnDevice(W[w].getVals(), W[w].getCols() * W[w].getRows());
             W[w].setDeviceData(w_d);
 
+            float* dW_d = MatrixGPU::storeOnDevice(dW_h[w].getVals(), dW_h[w].getCols() * dW_h[w].getRows());
+            dW_h[w].setDeviceData(dW_d);
+
             // Store bias term for layer on device
             float* b_d = MatrixGPU::storeOnDevice(b[w].getVals(), b[w].getCols() * b[w].getRows());
             b[w].setDeviceData(b_d);
+
+            float* db_d = MatrixGPU::storeOnDevice(db_h[w].getVals(), db_h[w].getCols() * db_h[w].getRows());
+            db_h[w].setDeviceData(db_d);
 
             // Store placeholder for z, a
             Matrix z_d_mat = Matrix::zeros(W[w].getCols(), 1);
@@ -679,9 +610,13 @@ void NeuralNetwork::trainingLoopGPU(std::vector<std::vector<char>> trainingSet, 
             // Get cost
             Matrix dA = y_hat - Y;
 
+            // backprop
+            for (int i = W.size() - 1; i >= 0; i--) {
+                dA = MatrixGPU::backProp(W[i], b[i], z[i], a[i], dA, db_h[i], dW_h[i], (i == W.size() - 1));
+            }
 
-
-            // trainingStepGPU(X, expected, 0.001);
+            // update weights
+            MatrixGPU::updateWeights(W, b, dW_h, db_h, 0.01);
         }   
         // Clear W, b, a, z on GPU
         // printf("Epoch %i, avg cost: %f | time elapsed: %fs\n", e, cost, seconds_since_start);
@@ -705,6 +640,8 @@ void NeuralNetwork::trainingLoopGPU(std::vector<std::vector<char>> trainingSet, 
             // Clear z from device
             float* z_h = MatrixGPU::removeFromDevice(z[w].getDeviceData(), outputSize);
             float* a_h = MatrixGPU::removeFromDevice(a[w].getDeviceData(), outputSize);
+            float *dW_h2 = MatrixGPU::removeFromDevice(dW_h[w].getDeviceData(), outputSize);
+            float *db_h2 = MatrixGPU::removeFromDevice(db_h[w].getDeviceData(), outputSize);
         }
 
         double seconds_since_start = difftime( time(0), start);
@@ -729,6 +666,8 @@ NeuralNetwork::NeuralNetwork(int size)
     g = std::vector<Activation>();
     a = std::vector<Matrix>();
     a.push_back(Matrix::zeros(size, 1));
+    dW_h = std::vector<Matrix>();
+    db_h = std::vector<Matrix>();
 
     z = std::vector<Matrix>();
     costHistory = std::vector<float>();

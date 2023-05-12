@@ -184,6 +184,38 @@ __global__ void softmax_kernel(const float * input, float* res, float vecSum, in
     }
 }
 
+__global__ void elementWiseMultKernel(float * a, float* b, float* c, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx < size) {
+        c[idx] = a[idx] * b[idx];
+    }
+}
+
+__global__ void scalarMultKernel(float *a, float b, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx < size) {
+        c[idx] = a[idx] * b;
+    }
+}
+
+__global__ void sumKernel(float* a, float* out, int size) {
+    float total = 0.0;
+    for (int i  = 0; i < size; i++) {
+        total += a[i];
+    }
+    out[0] = total;
+}
+
+__global__ void assignScalarKernel(float* a, float b, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx < size) {
+        a[idx] = b;
+    }
+}
+
 // __global__ void exp_sum_kernel(const float *input, float *result, int N) {
 //     // Calculate the global thread index
 //     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -338,6 +370,8 @@ namespace MatrixGPU {
         cudaFree(a_d);
         return a_h;
     }
+
+
 
     Matrix forwardPass(std::vector<Matrix> W_d, std::vector<Matrix> b_d, std::vector<Matrix>z_d, std::vector<Matrix>a_d, float* X, float* Y, int inputSize, int outputSize) {
         // printf("Starting forward pass!\n");
@@ -512,6 +546,85 @@ namespace MatrixGPU {
 
 
     }
+
+    Matrix backProp(Matrix W_layer, Matrix b_layer, Matrix z_layer, Matrix a_layer, Matrix dA, Matrix dB, Matrix dW, bool outputLayer) {
+        float* dZ_d;
+        cudaMalloc(&dZ_d, z_layer.getRows() * z_layer.getCols() * sizeof(float));
+
+        if (outputLayer) {
+            cudaMemcpy(&dZ_d, z_layer.getDeviceData(), z_layer.getRows() * z_layer.getCols() * sizeof(float), cudaMemcpyHostToDevice);
+        } else {
+            int z_size = z_layer.getRows() * z_layer.getCols();
+            elementWiseMultKernel<<< ceil(z_size / 1024.0), 1024 >>>(z_layer.getDeviceData(), dA.getDeviceData(), dZ_d, z_size);
+        }
+
+        // a[l-1].T
+        float* a_layer_1t_d;
+        cudaMalloc(&a_layer_1t_d, a_layer.getCols() * a_layer.getRows() * sizeof(float));
+        dim3 grid(ceil(a_layer.getCols() / TRANSPOSE_BLOCK_DIM), ceil(a_layer.getRows() / TRANSPOSE_BLOCK_DIM), 1);
+        dim3 threads(TRANSPOSE_BLOCK_DIM, TRANSPOSE_BLOCK_DIM, 1);
+        transpose<<<grid, threads>>>(a_layer_1t_d, a_layer.getDeviceData(), a_layer.getCols(), a_layer.getRows());
+
+        // dW[l]
+        dim3 blockSize(TILE_WIDTH, TILE_WIDTH, 1);
+        dim3 gridSize(ceil(a_layer.getRows() / 32.0), ceil(z_layer.getRows() / 32.0)); // CHECK
+        matMul<<<gridSize, blockSize>>>(dZ_d, a_layer_1t_d, dW.getDeviceData(), z_layer.getRows(), z_layer.getCols(),  a_layer.getCols(), a_layer.getRows(), dW.getRows(), dW.getCols());
+
+        // db[l] = sum(dZ[l])
+        float* b_d;
+        cudaMalloc(&b_d, sizeof(float));
+        sumKernel<<<1, 1>>>(dZ_d, b_d, z_layer.getRows() * z_layer.getCols());
+        assignScalarKernel<<<ceil(b_layer.getRows() / 1024.0), 1024>>>(dB.getDeviceData(), b_d[0], b_layer.getRows());
+
+        // dA[l-1] = w[l].T * dZ[l]
+        float* da_d;
+        cudaMalloc(&da_d, a_layer.getRows() * sizeof(float));
+        dim3 gridSize2(ceil(W_layer.getRows() / 32.0), ceil(z_layer.getRows() / 32.0));
+        matMul<<<gridSize2, blockSize>>>(W_layer.getDeviceData(), dZ_d, da_d, W_layer.getRows(), W_layer.getCols(), z_layer.getRows(), z_layer.getCols(), a_layer.getRows(), a_layer.getCols());
+
+        float* da_h = (float*)malloc(a_layer.getRows() * a_layer.getCols() * sizeof(float));
+        cudaMemcpy(da_h, da_d, a_layer.getRows() * a_layer.getCols() * sizeof(float), cudaMemcpyDeviceToHost);
+        Matrix dA_1 = Matrix(a_layer.getRows(), a_layer.getCols(), da_h);
+
+        // Device memory
+        cudaFree(w_temp_t_d);
+        cudaFree(a_layer_1t_d);
+        cudaFree(b_d);
+        cudaFree(dZ_d);
+
+        return dA_1;
+    }
+
+    void updateWeights(std::vector<Matrix> W_d, std::vector<Matrix> b_d, std::vector<Matrix> dW_d, std::vector<Matrix> db_d, float alpha) {
+        for (int i = 0; i < W_d.size(); i++) {
+            // dW * alpha
+            scalarMultKernel<<<ceil(W_d[i].getRows() * W_d[i].getCols() / 1024.0), 1024>>>(dW_d[i].getDeviceData(), alpha, W_d[i].getRows() * W_d[i].getCols());
+            // W[i] = W[i] - dW
+            subtract<<< ceil(W_d[i].getRows() * W_d[i].getCols() / 1024.0), 1024 >>>(W_d[i].getDeviceData, dW_d[i].getDeviceData(),  W_d[i].getRows() * W_d[i].getCols())
+
+            // db * alpha
+            scalarMultKernel<<<ceil(b_d[i].getRows() * b_d[i].getCols() / 1024.0), 1024>>>(db_d[i].getDeviceData(), alpha, b_d[i].getRows() * b_d[i].getCols());
+            // W[i] = W[i] - dW
+            subtract<<< ceil(b_d[i].getRows() * b_d[i].getCols() / 1024.0), 1024 >>>(b_d[i].getDeviceData, db_d[i].getDeviceData(),  b_d[i].getRows() * b_d[i].getCols())
+        }
+    }
+
+
+    void trainingStep(Matrix X, Matrix Y, std::vector<Matrix> W_d, std::vector<Matrix> b_d, std::vector<Matrix>z_d, std::vector<Matrix>a_d, std::vector<Matrix> dW_d, std::vector<Matrix> db_d) {
+        // Forward Pass
+        Matrix y_hat = forwardPass(W_d, b_d, z_d, a_d, X.getVals(), Y.getVals(), X.getRows());
+
+        // Backprop loop
+        
+
+        // Update weights
+        updateWeights(W_d, b_d, dW_d, db_d, 0.01);
+    }
+
+    // float* w_temp_t_d;
+    // cudaMalloc(&w_temp_t_d, W_layer.getRows() * W_layer.getCols() * sizeof(float));
+    // dim3 grid2(ceil(W_layer.getCols() / TRANSPOSE_BLOCK_DIM), ceil(W_layer.getRows() / TRANSPOSE_BLOCK_DIM), 1)
+    // transpose<<<grid2, threads>>>(w_temp_t_d, W_layer.getDeviceData(), W_layer.getCols() * W_layer.getRows());
 
     // Matrix forwardPass(std::vector<Matrix> W_d, std::vector<Matrix> b_d, std::vector<Matrix>z_d, std::vector<Matrix>a_d, float* X, float* Y, int inputSize, int outputSize) {
     //     // printf("Starting forward pass!\n");
