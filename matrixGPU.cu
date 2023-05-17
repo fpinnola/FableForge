@@ -196,7 +196,7 @@ __global__ void scalarMultKernel(float *a, float b, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < size) {
-        c[idx] = a[idx] * b;
+        a[idx] = a[idx] * b;
     }
 }
 
@@ -205,7 +205,8 @@ __global__ void sumKernel(float* a, float* out, int size) {
     for (int i  = 0; i < size; i++) {
         total += a[i];
     }
-    out[0] = total;
+    printf("Sum total: %f\n", total);
+    *out = total;
 }
 
 __global__ void assignScalarKernel(float* a, float b, int size) {
@@ -365,9 +366,9 @@ namespace MatrixGPU {
     float* removeFromDevice(float* a_d, int size) {
         float* a_h = (float*)malloc(size * sizeof(float));
 
-        cudaMemcpy(a_h, a_d, size * sizeof(float), cudaMemcpyDeviceToHost);
+        CUDA_CALL(cudaMemcpy(a_h, a_d, size * sizeof(float), cudaMemcpyDeviceToHost));
 
-        cudaFree(a_d);
+        CUDA_CALL(cudaFree(a_d));
         return a_h;
     }
 
@@ -536,7 +537,7 @@ namespace MatrixGPU {
         }
 
         float* y_hat_val = (float*)malloc(outputSize * sizeof(float));
-        cudaMemcpy(y_hat_val, a_d[a_d.size()-1].getDeviceData(), a_d[a_d.size()-1].getRows() * sizeof(float), cudaMemcpyDeviceToHost);
+        CUDA_CALL(cudaMemcpy(y_hat_val, a_d[a_d.size()-1].getDeviceData(), a_d[a_d.size()-1].getRows() * sizeof(float), cudaMemcpyDeviceToHost));
         Matrix y_hat = Matrix(outputSize, 1, y_hat_val);
 
         // printf("Prediction!\n");
@@ -549,48 +550,77 @@ namespace MatrixGPU {
 
     Matrix backProp(Matrix W_layer, Matrix b_layer, Matrix z_layer, Matrix a_layer, Matrix dA, Matrix dB, Matrix dW, bool outputLayer) {
         float* dZ_d;
-        cudaMalloc(&dZ_d, z_layer.getRows() * z_layer.getCols() * sizeof(float));
+        CUDA_CALL(cudaMalloc(&dZ_d, z_layer.getRows() * z_layer.getCols() * sizeof(float)));
+        // printf("HERE1\n");
 
         if (outputLayer) {
-            cudaMemcpy(&dZ_d, z_layer.getDeviceData(), z_layer.getRows() * z_layer.getCols() * sizeof(float), cudaMemcpyHostToDevice);
+            CUDA_CALL(cudaMemcpy(dZ_d, z_layer.getDeviceData(), z_layer.getRows() * z_layer.getCols() * sizeof(float), cudaMemcpyHostToDevice));
         } else {
             int z_size = z_layer.getRows() * z_layer.getCols();
-            elementWiseMultKernel<<< ceil(z_size / 1024.0), 1024 >>>(z_layer.getDeviceData(), dA.getDeviceData(), dZ_d, z_size);
+            elementWiseMultKernel<<< ceil(z_size / 256.0), 256 >>>(z_layer.getDeviceData(), dA.getDeviceData(), dZ_d, z_size);
+            CUDA_CALL(cudaDeviceSynchronize());
         }
+        // printf("HERE2\n");
+
 
         // a[l-1].T
         float* a_layer_1t_d;
-        cudaMalloc(&a_layer_1t_d, a_layer.getCols() * a_layer.getRows() * sizeof(float));
+        CUDA_CALL(cudaMalloc(&a_layer_1t_d, a_layer.getCols() * a_layer.getRows() * sizeof(float)));
         dim3 grid(ceil(a_layer.getCols() / TRANSPOSE_BLOCK_DIM), ceil(a_layer.getRows() / TRANSPOSE_BLOCK_DIM), 1);
         dim3 threads(TRANSPOSE_BLOCK_DIM, TRANSPOSE_BLOCK_DIM, 1);
         transpose<<<grid, threads>>>(a_layer_1t_d, a_layer.getDeviceData(), a_layer.getCols(), a_layer.getRows());
+        CUDA_CALL(cudaDeviceSynchronize());
+
+        // printf("HERE3\n");
 
         // dW[l]
         dim3 blockSize(TILE_WIDTH, TILE_WIDTH, 1);
         dim3 gridSize(ceil(a_layer.getRows() / 32.0), ceil(z_layer.getRows() / 32.0)); // CHECK
         matMul<<<gridSize, blockSize>>>(dZ_d, a_layer_1t_d, dW.getDeviceData(), z_layer.getRows(), z_layer.getCols(),  a_layer.getCols(), a_layer.getRows(), dW.getRows(), dW.getCols());
+        CUDA_CALL(cudaDeviceSynchronize());
+
+        // printf("HERE4\n");
 
         // db[l] = sum(dZ[l])
         float* b_d;
-        cudaMalloc(&b_d, sizeof(float));
+        CUDA_CALL(cudaMalloc(&b_d, sizeof(float)));
         sumKernel<<<1, 1>>>(dZ_d, b_d, z_layer.getRows() * z_layer.getCols());
-        assignScalarKernel<<<ceil(b_layer.getRows() / 1024.0), 1024>>>(dB.getDeviceData(), b_d[0], b_layer.getRows());
+        CUDA_CALL(cudaDeviceSynchronize());
+
+        // printf("HERE4.1\n");
+
+        float b_h;
+        CUDA_CALL(cudaMemcpy(&b_h, b_d, sizeof(float), cudaMemcpyDeviceToHost)); 
+
+        // printf("HERE4.2\n");
+        assignScalarKernel<<<ceil(b_layer.getRows() / 1024.0), 1024>>>(dB.getDeviceData(), b_h, b_layer.getRows());
+        CUDA_CALL(cudaDeviceSynchronize());
+
+        // printf("HERE5\n");
 
         // dA[l-1] = w[l].T * dZ[l]
         float* da_d;
-        cudaMalloc(&da_d, a_layer.getRows() * sizeof(float));
+        CUDA_CALL(cudaMalloc(&da_d, a_layer.getRows() * sizeof(float)));
         dim3 gridSize2(ceil(W_layer.getRows() / 32.0), ceil(z_layer.getRows() / 32.0));
         matMul<<<gridSize2, blockSize>>>(W_layer.getDeviceData(), dZ_d, da_d, W_layer.getRows(), W_layer.getCols(), z_layer.getRows(), z_layer.getCols(), a_layer.getRows(), a_layer.getCols());
+        CUDA_CALL(cudaDeviceSynchronize());
+        // printf("HERE6\n");
 
         float* da_h = (float*)malloc(a_layer.getRows() * a_layer.getCols() * sizeof(float));
-        cudaMemcpy(da_h, da_d, a_layer.getRows() * a_layer.getCols() * sizeof(float), cudaMemcpyDeviceToHost);
+        CUDA_CALL(cudaMemcpy(da_h, da_d, a_layer.getRows() * a_layer.getCols() * sizeof(float), cudaMemcpyDeviceToHost));
         Matrix dA_1 = Matrix(a_layer.getRows(), a_layer.getCols(), da_h);
+        dA_1.setDeviceData(da_d);
+
+        // printf("HERE7\n");
 
         // Device memory
-        cudaFree(w_temp_t_d);
-        cudaFree(a_layer_1t_d);
-        cudaFree(b_d);
-        cudaFree(dZ_d);
+        // cudaFree(w_temp_t_d);
+        CUDA_CALL(cudaFree(da_d));
+        CUDA_CALL(cudaFree(a_layer_1t_d));
+        CUDA_CALL(cudaFree(b_d));
+        CUDA_CALL(cudaFree(dZ_d));
+        // printf("HERE8\n");
+
 
         return dA_1;
     }
@@ -599,26 +629,33 @@ namespace MatrixGPU {
         for (int i = 0; i < W_d.size(); i++) {
             // dW * alpha
             scalarMultKernel<<<ceil(W_d[i].getRows() * W_d[i].getCols() / 1024.0), 1024>>>(dW_d[i].getDeviceData(), alpha, W_d[i].getRows() * W_d[i].getCols());
+            CUDA_CALL(cudaDeviceSynchronize());
+
             // W[i] = W[i] - dW
-            subtract<<< ceil(W_d[i].getRows() * W_d[i].getCols() / 1024.0), 1024 >>>(W_d[i].getDeviceData, dW_d[i].getDeviceData(),  W_d[i].getRows() * W_d[i].getCols())
+            subtract<<< ceil(W_d[i].getRows() * W_d[i].getCols() / 1024.0), 1024 >>>(W_d[i].getDeviceData(), dW_d[i].getDeviceData(),  W_d[i].getRows() * W_d[i].getCols());
+            CUDA_CALL(cudaDeviceSynchronize());
 
             // db * alpha
             scalarMultKernel<<<ceil(b_d[i].getRows() * b_d[i].getCols() / 1024.0), 1024>>>(db_d[i].getDeviceData(), alpha, b_d[i].getRows() * b_d[i].getCols());
+            CUDA_CALL(cudaDeviceSynchronize());
+
             // W[i] = W[i] - dW
-            subtract<<< ceil(b_d[i].getRows() * b_d[i].getCols() / 1024.0), 1024 >>>(b_d[i].getDeviceData, db_d[i].getDeviceData(),  b_d[i].getRows() * b_d[i].getCols())
+            subtract<<< ceil(b_d[i].getRows() * b_d[i].getCols() / 1024.0), 1024 >>>(b_d[i].getDeviceData(), db_d[i].getDeviceData(),  b_d[i].getRows() * b_d[i].getCols());
+            CUDA_CALL(cudaDeviceSynchronize());
+
         }
     }
 
 
     void trainingStep(Matrix X, Matrix Y, std::vector<Matrix> W_d, std::vector<Matrix> b_d, std::vector<Matrix>z_d, std::vector<Matrix>a_d, std::vector<Matrix> dW_d, std::vector<Matrix> db_d) {
         // Forward Pass
-        Matrix y_hat = forwardPass(W_d, b_d, z_d, a_d, X.getVals(), Y.getVals(), X.getRows());
+        // Matrix y_hat = forwardPass(W_d, b_d, z_d, a_d, X.getVals(), Y.getVals(), X.getRows());
 
         // Backprop loop
         
 
         // Update weights
-        updateWeights(W_d, b_d, dW_d, db_d, 0.01);
+        // updateWeights(W_d, b_d, dW_d, db_d, 0.01);
     }
 
     // float* w_temp_t_d;

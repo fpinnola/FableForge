@@ -603,6 +603,8 @@ void NeuralNetwork::trainingLoopGPU(std::vector<std::vector<char>> trainingSet, 
             Matrix X = oneHot(trainingSet[i][0], alphabet);
             Matrix Y = oneHot(trainingSet[i][1], alphabet);
 
+            printf("training example %i\n", i);
+
             Matrix y_hat = MatrixGPU::forwardPass(W, b, z, a, X.getVals(), Y.getVals(), X.getRows(), Y.getRows());
 
             costSum = cost(y_hat, Y) + costSum;
@@ -610,9 +612,13 @@ void NeuralNetwork::trainingLoopGPU(std::vector<std::vector<char>> trainingSet, 
             // Get cost
             Matrix dA = y_hat - Y;
 
+            printf("dA\n");
+            // dA.printMatrix();
+
             // backprop
-            for (int i = W.size() - 1; i >= 0; i--) {
-                dA = MatrixGPU::backProp(W[i], b[i], z[i], a[i], dA, db_h[i], dW_h[i], (i == W.size() - 1));
+            for (int w = W.size() - 1; w >= 0; w--) {
+                printf("Backprop layer %i\n", w);
+                dA = MatrixGPU::backProp(W[w], b[w], z[w], a[w], dA, db_h[w], dW_h[w], (w == W.size() - 1));
             }
 
             // update weights
@@ -623,7 +629,8 @@ void NeuralNetwork::trainingLoopGPU(std::vector<std::vector<char>> trainingSet, 
 
         // printf("Cost avg: %f\n", costSum / trainingSet.size());
 
-        float * a_h_final = MatrixGPU::removeFromDevice(a[a.size() - 1].getDeviceData(), W[W.size() - 1].getCols());
+        // float * a_h_final = MatrixGPU::removeFromDevice(a[a.size() - 1].getDeviceData(), W[W.size() - 1].getCols());
+        printf("HERE1\n");
 
         for (int w = 0; w < W.size(); w++) {
             // Store Weights for layer on device
@@ -631,18 +638,30 @@ void NeuralNetwork::trainingLoopGPU(std::vector<std::vector<char>> trainingSet, 
             int outputSize = W[w].getCols();
             float* w_h = MatrixGPU::removeFromDevice(W[w].getDeviceData(), W[w].getCols() * W[w].getRows());
             W[w] = Matrix(W[w].getRows(), W[w].getCols(), w_h);
+            printf("HERE2\n");
 
             // Store bias term for layer on device
             float* b_h = MatrixGPU::removeFromDevice(b[w].getDeviceData(), b[w].getCols() * b[w].getRows());
             b[w] = Matrix(b[w].getRows(), b[w].getCols(), b_h);
+            printf("HERE3\n");
 
 
             // Clear z from device
             float* z_h = MatrixGPU::removeFromDevice(z[w].getDeviceData(), outputSize);
-            float* a_h = MatrixGPU::removeFromDevice(a[w].getDeviceData(), outputSize);
+                    printf("HERE4\n");
+
+            float* a_h = MatrixGPU::removeFromDevice(a[w+1].getDeviceData(), outputSize);
+                    printf("HERE5\n");
+
             float *dW_h2 = MatrixGPU::removeFromDevice(dW_h[w].getDeviceData(), outputSize);
+                    printf("HERE6\n");
+
             float *db_h2 = MatrixGPU::removeFromDevice(db_h[w].getDeviceData(), outputSize);
+                    printf("HERE7\n");
+
         }
+
+        float* a_h_input = MatrixGPU::removeFromDevice(a[0].getDeviceData(), alphabet.size()); // Should be size * context when context increased
 
         double seconds_since_start = difftime( time(0), start);
         printf("Epoch %i, avg cost: %f | time elapsed: %fs\n", e, costSum / trainingSet.size(), seconds_since_start);

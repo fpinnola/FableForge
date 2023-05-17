@@ -150,8 +150,8 @@ int main(int argc, char const *argv[])
     int datasetSize = charCount;
     printf("datasetSize: %i\n", datasetSize);
 
-    int epochs = 10;
-    int trainingSetSize = 250000;
+    int epochs = 2;
+    int trainingSetSize = 200;
     int context = 1;
 
     printf("training set size: %i\n",trainingSetSize);
@@ -170,8 +170,8 @@ int main(int argc, char const *argv[])
     network.addLayer(256, Activation::LeakyRelu);
     network.addLayer(512, Activation::LeakyRelu);
     // network.addLayer(1024, Activation::LeakyRelu);
-    network.addLayer(256, Activation::LeakyRelu);
-    network.addLayer(256, Activation::LeakyRelu);
+    // network.addLayer(256, Activation::LeakyRelu);
+    // network.addLayer(256, Activation::LeakyRelu);
     network.addLayer(alphabetSize, Activation::Softmax);
 
     network.printNN();
